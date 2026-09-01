@@ -1,3 +1,7 @@
 # proyectoAula20262
 
-Ver las instruciones en el Virtual TDEA
+## Entregable 1: Investigación de Campo
+
+Toda la documentación correspondiente a la investigación de campo realizada en el campus del TdeA se encuentra en nuestra carpeta de investigación:
+
+* 📁 **[Directorio principal de Investigación](./docs/investigacion/)**
