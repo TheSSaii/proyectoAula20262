@@ -1,8 +1,8 @@
 # ⚽ proyectoAula20262 — canchaYa
 
-![Expo SDK](https://shields.io)
-![React Native](https://shields.io)
-![Node](https://shields.io>=18.0.0-339933?style=for-the-badge&logo=node.js&logoColor=white)
+![Expo SDK]
+![React Native]
+![Node]
 
 Este repositorio contiene el código fuente de la aplicación móvil **canchaYa**, desarrollada con **React Native** y **Expo**. La arquitectura del proyecto está diseñada de forma modular, separando las vistas, los flujos de navegación y la gestión del estado global de autenticación.
 
