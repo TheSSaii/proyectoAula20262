@@ -1,11 +1,11 @@
 /**
  * @file App.js
  * @description Punto de entrada de la aplicación CanchaYa.
- * [CICLO 2 - T02]: Incluye panel de control para ejecutar el Seed en Cloud Firestore
- * y visualización interactiva de componentes con datos dinámicos.
+ * [CICLO 3 - T06]: Verificación en vivo de la capa de servicios (escenariosService.js)
+ * consumiendo datos directamente desde Cloud Firestore y renderizando con EscenarioCard.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
   Text,
@@ -16,131 +16,207 @@ import {
   StatusBar,
   TouchableOpacity,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import Badge from './components/Badge';
 import EscenarioCard from './components/EscenarioCard';
-import { ejecutarSeedEscenarios, ESCENARIOS_TDEA } from './services/seedEscenarios';
+import { getEscenarios, getEscenarioById } from './services/escenariosService';
+import { ejecutarSeedEscenarios } from './services/seedEscenarios';
 
 export default function App() {
-  const [cargandoSeed, setCargandoSeed] = useState(false);
-  const [estadoSeed, setEstadoSeed] = useState(null);
+  const [escenarios, setEscenarios] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [refrescando, setRefrescando] = useState(false);
+  const [errorConsulta, setErrorConsulta] = useState(null);
+  const [consultandoId, setConsultandoId] = useState(null);
 
-  // Ejecución del Seed en Cloud Firestore
-  const handleEjecutarSeed = async () => {
+  // Función para consultar el catálogo desde Firestore usando el servicio
+  const cargarCatalogo = useCallback(async () => {
     try {
-      setCargandoSeed(true);
-      setEstadoSeed(null);
+      setErrorConsulta(null);
+      const datos = await getEscenarios();
+      setEscenarios(datos);
+    } catch (error) {
+      console.error('Error en cargarCatalogo:', error);
+      setErrorConsulta(error.message);
+    } finally {
+      setCargando(false);
+      setRefrescando(false);
+    }
+  }, []);
 
-      const resultado = await ejecutarSeedEscenarios();
-      setEstadoSeed({ exito: true, mensaje: resultado.mensaje });
+  useEffect(() => {
+    cargarCatalogo();
+  }, [cargarCatalogo]);
+
+  const handleRefrescar = () => {
+    setRefrescando(true);
+    cargarCatalogo();
+  };
+
+  // Verificación del método getEscenarioById al pulsar una tarjeta
+  const handleSeleccionarEscenario = async (escenarioSeleccionado) => {
+    try {
+      setConsultandoId(escenarioSeleccionado.id);
+
+      // Llamada real a getEscenarioById() para validar el segundo método de T06
+      const escenarioDetallado = await getEscenarioById(escenarioSeleccionado.id);
+
+      if (!escenarioDetallado) {
+        Alert.alert('Aviso', 'El escenario ya no existe en la base de datos.');
+        return;
+      }
 
       Alert.alert(
-        '✅ Seed Completado',
-        `${resultado.mensaje}\n\nPuedes abrir tu consola de Firebase en 'Firestore Database' para verificar la colección 'escenarios'.`,
-        [{ text: 'Entendido', style: 'default' }]
+        `✅ getEscenarioById('${escenarioDetallado.id}')`,
+        `Nombre: ${escenarioDetallado.nombre}\n` +
+          `Tipo: ${escenarioDetallado.tipo}\n` +
+          `Ubicación: ${escenarioDetallado.ubicacion}\n` +
+          `Capacidad: ${escenarioDetallado.capacidad} personas\n` +
+          `Estado: ${escenarioDetallado.estado.toUpperCase()}\n` +
+          `Descripción: ${escenarioDetallado.descripcion || 'Sin descripción'}`,
+        [{ text: 'Aceptar', style: 'default' }]
       );
     } catch (error) {
-      console.error('Error al ejecutar seed:', error);
-      setEstadoSeed({ exito: false, mensaje: error.message });
-      Alert.alert(
-        '❌ Error en el Seed',
-        `No se pudo sincronizar con Firestore:\n${error.message}\n\nVerifica que hayas habilitado Firestore en 'Modo de prueba'.`,
-        [{ text: 'Cerrar', style: 'destructive' }]
-      );
+      Alert.alert('Error', error.message);
     } finally {
-      setCargandoSeed(false);
+      setConsultandoId(null);
     }
   };
 
-  const handleSeleccionarEscenario = (escenario) => {
-    Alert.alert(
-      'Escenario Seleccionado',
-      `Nombre: ${escenario.nombre}\nEstado: ${escenario.estado.toUpperCase()}\nCapacidad: ${escenario.capacidad} personas\nUbicación: ${escenario.ubicacion}`,
-      [{ text: 'Aceptar', style: 'default' }]
-    );
+  // En caso de que se necesite resembrar
+  const handleResembrar = async () => {
+    try {
+      setCargando(true);
+      await ejecutarSeedEscenarios();
+      await cargarCatalogo();
+      Alert.alert('Éxito', 'Base de datos sincronizada y catálogo recargado.');
+    } catch (error) {
+      Alert.alert('Error', error.message);
+    } finally {
+      setCargando(false);
+    }
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        {/* Encabezado principal */}
+      <ScrollView
+        contentContainerStyle={styles.scrollContainer}
+        refreshControl={
+          <RefreshControl refreshing={refrescando} onRefresh={handleRefrescar} />
+        }
+      >
+        {/* Encabezado */}
         <View style={styles.encabezado}>
           <Text style={styles.tituloApp}>🏟️ CanchaYa</Text>
           <Text style={styles.subtituloApp}>
-            Tecnológico de Antioquia · Verificación Ciclo 2 (T02)
+            Tecnológico de Antioquia · Verificación T06 (escenariosService)
           </Text>
         </View>
 
-        {/* Panel de Control de Firestore (Seed T02) */}
-        <View style={styles.panelSeed}>
-          <View style={styles.encabezadoPanel}>
-            <Text style={styles.tituloPanel}>🔥 Sincronización Firestore (T02)</Text>
+        {/* Panel informativo de la capa de servicio */}
+        <View style={styles.panelInfo}>
+          <View style={styles.filaPanel}>
+            <Text style={styles.tituloPanel}>📡 Capa de Servicios Conectada</Text>
             <Badge
-              estado={estadoSeed?.exito ? 'disponible' : 'info'}
-              texto={estadoSeed?.exito ? 'Sincronizado' : 'Listo para sembrar'}
+              estado={errorConsulta ? 'ocupado' : cargando ? 'mantenimiento' : 'disponible'}
+              texto={
+                errorConsulta
+                  ? 'Error de Red'
+                  : cargando
+                  ? 'Consultando...'
+                  : `${escenarios.length} en Firestore`
+              }
               tamano="pequeno"
             />
           </View>
-
           <Text style={styles.textoPanel}>
-            Puebla la colección <Text style={styles.codigo}>escenarios</Text> en Firebase con
-            los 5 escenarios deportivos oficiales del campus Robledo.
+            Los datos a continuación se obtienen en tiempo real con{' '}
+            <Text style={styles.codigo}>getEscenarios()</Text>. Toca una tarjeta para
+            probar <Text style={styles.codigo}>getEscenarioById()</Text>.
           </Text>
 
-          <TouchableOpacity
-            style={[styles.botonSeed, cargandoSeed && styles.botonDeshabilitado]}
-            onPress={handleEjecutarSeed}
-            disabled={cargandoSeed}
-            activeOpacity={0.8}
-          >
-            {cargandoSeed ? (
-              <View style={styles.filaBoton}>
-                <ActivityIndicator color="#FFFFFF" size="small" />
-                <Text style={styles.textoBoton}> Guardando en Firestore...</Text>
-              </View>
-            ) : (
-              <Text style={styles.textoBoton}>🚀 Poblar Base de Datos en Firebase</Text>
-            )}
-          </TouchableOpacity>
-
-          {estadoSeed && (
-            <View
-              style={[
-                styles.alertaResultado,
-                estadoSeed.exito ? styles.alertaExito : styles.alertaError,
-              ]}
+          <View style={styles.filaBotones}>
+            <TouchableOpacity
+              style={styles.botonSecundario}
+              onPress={handleRefrescar}
+              disabled={cargando}
             >
-              <Text
-                style={[
-                  styles.textoAlerta,
-                  estadoSeed.exito ? styles.textoExito : styles.textoError,
-                ]}
-              >
-                {estadoSeed.exito ? '✓ ' : '✕ '}
-                {estadoSeed.mensaje}
+              <Text style={styles.textoBotonSecundario}>🔄 Recargar</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.botonSecundario}
+              onPress={handleResembrar}
+              disabled={cargando}
+            >
+              <Text style={styles.textoBotonSecundario}>🌱 Resembrar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Estado de carga inicial */}
+        {cargando && !refrescando && (
+          <View style={styles.centroCarga}>
+            <ActivityIndicator size="large" color="#0284C7" />
+            <Text style={styles.textoCargando}>
+              Consultando colección 'escenarios' en Firestore...
+            </Text>
+          </View>
+        )}
+
+        {/* Estado de error */}
+        {errorConsulta && !cargando && (
+          <View style={styles.cajaError}>
+            <Text style={styles.tituloError}>Error al cargar catálogo</Text>
+            <Text style={styles.detalleError}>{errorConsulta}</Text>
+            <TouchableOpacity style={styles.botonReintentar} onPress={cargarCatalogo}>
+              <Text style={styles.textoBotonReintentar}>Reintentar consulta</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Listado dinámico obtenido de Firestore */}
+        {!cargando && !errorConsulta && (
+          <>
+            <View style={styles.seccion}>
+              <Text style={styles.tituloSeccion}>
+                Catálogo desde Firestore ({escenarios.length})
+              </Text>
+              <Text style={styles.descripcionSeccion}>
+                Documentos leídos de la colección oficial de Firebase:
               </Text>
             </View>
-          )}
-        </View>
 
-        {/* Vista previa de los datos a sembrar usando EscenarioCard (T07) */}
-        <View style={styles.seccion}>
-          <Text style={styles.tituloSeccion}>
-            Escenarios Reales del TdeA ({ESCENARIOS_TDEA.length})
-          </Text>
-          <Text style={styles.descripcionSeccion}>
-            Estos son los documentos que se sembrarán en Firestore:
-          </Text>
-        </View>
+            {escenarios.length === 0 ? (
+              <View style={styles.cajaVacia}>
+                <Text style={styles.textoVacio}>No hay escenarios en Firestore.</Text>
+                <TouchableOpacity style={styles.botonReintentar} onPress={handleResembrar}>
+                  <Text style={styles.textoBotonReintentar}>Sembrar escenarios ahora</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              escenarios.map((item) => (
+                <EscenarioCard
+                  key={item.id}
+                  escenario={item}
+                  onPress={handleSeleccionarEscenario}
+                />
+              ))
+            )}
+          </>
+        )}
 
-        {ESCENARIOS_TDEA.map((escenario) => (
-          <EscenarioCard
-            key={escenario.id}
-            escenario={escenario}
-            onPress={handleSeleccionarEscenario}
-          />
-        ))}
+        {/* Indicador de consulta puntual */}
+        {consultandoId && (
+          <View style={styles.overlayCargaPuntual}>
+            <ActivityIndicator size="small" color="#FFFFFF" />
+            <Text style={styles.textoCargaPuntual}>
+              Consultando getEscenarioById('{consultandoId}')...
+            </Text>
+          </View>
+        )}
 
         <View style={styles.espacioFinal} />
       </ScrollView>
@@ -158,7 +234,7 @@ const styles = StyleSheet.create({
   },
   encabezado: {
     paddingHorizontal: 20,
-    marginBottom: 16,
+    marginBottom: 14,
   },
   tituloApp: {
     fontSize: 26,
@@ -167,91 +243,106 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   subtituloApp: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#64748B',
     marginTop: 2,
   },
-  panelSeed: {
+  panelInfo: {
     backgroundColor: '#FFFFFF',
     marginHorizontal: 16,
-    marginBottom: 20,
-    padding: 16,
-    borderRadius: 16,
+    marginBottom: 16,
+    padding: 14,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
   },
-  encabezadoPanel: {
+  filaPanel: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   tituloPanel: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     color: '#0F172A',
   },
   textoPanel: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#475569',
-    lineHeight: 18,
-    marginBottom: 14,
+    lineHeight: 17,
+    marginBottom: 10,
   },
   codigo: {
     fontWeight: '700',
     color: '#0284C7',
     fontFamily: 'monospace',
   },
-  botonSeed: {
-    backgroundColor: '#0284C7',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  botonDeshabilitado: {
-    backgroundColor: '#94A3B8',
-  },
-  filaBoton: {
+  filaBotones: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    gap: 8,
   },
-  textoBoton: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  alertaResultado: {
-    marginTop: 12,
-    padding: 10,
+  botonSecundario: {
+    flex: 1,
+    backgroundColor: '#F1F5F9',
+    paddingVertical: 8,
     borderRadius: 8,
+    alignItems: 'center',
   },
-  alertaExito: {
-    backgroundColor: '#ECFDF5',
-    borderWidth: 1,
-    borderColor: '#A7F3D0',
+  textoBotonSecundario: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#334155',
   },
-  alertaError: {
+  centroCarga: {
+    paddingVertical: 40,
+    alignItems: 'center',
+  },
+  textoCargando: {
+    marginTop: 12,
+    fontSize: 13,
+    color: '#64748B',
+  },
+  cajaError: {
     backgroundColor: '#FEF2F2',
+    marginHorizontal: 16,
+    padding: 16,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#FECACA',
+    alignItems: 'center',
   },
-  textoAlerta: {
+  tituloError: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#991B1B',
+    marginBottom: 4,
+  },
+  detalleError: {
+    fontSize: 12,
+    color: '#B91C1C',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  botonReintentar: {
+    backgroundColor: '#0284C7',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  textoBotonReintentar: {
+    color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
   },
-  textoExito: {
-    color: '#065F46',
+  cajaVacia: {
+    padding: 30,
+    alignItems: 'center',
   },
-  textoError: {
-    color: '#991B1B',
+  textoVacio: {
+    fontSize: 14,
+    color: '#64748B',
+    marginBottom: 12,
   },
   seccion: {
     paddingHorizontal: 20,
@@ -267,7 +358,24 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginTop: 2,
   },
+  overlayCargaPuntual: {
+    position: 'absolute',
+    bottom: 20,
+    alignSelf: 'center',
+    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  textoCargaPuntual: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
   espacioFinal: {
-    height: 32,
+    height: 40,
   },
 });
