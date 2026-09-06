@@ -9,6 +9,7 @@ import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import InicioScreen from '../screens/InicioScreen';
 import DetalleScreen from '../screens/DetalleScreen';
+import DisponibilidadScreen from '../screens/DisponibilidadScreen';
 
 const Stack = createStackNavigator();
 
@@ -50,6 +51,13 @@ export default function NavegacionStack() {
         options={({ route }) => ({
           title: route.params?.escenario?.nombre || 'Detalle del Escenario',
         })}
+      />
+      <Stack.Screen
+        name="Disponibilidad"
+        component={DisponibilidadScreen}
+        options={{
+          title: '📅 Disponibilidad de Franjas',
+        }}
       />
     </Stack.Navigator>
   );
