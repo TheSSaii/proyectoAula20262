@@ -1,9 +1,9 @@
 /**
- * @file LoginScreen.js
- * @description Pantalla de inicio de sesión de CanchaYa (TdeA).
- * Gestiona el formulario de acceso con validación de correo y contraseña,
- * soporte para texto seguro, manejo de estados de carga y llamada al AuthContexto.
- * @module screens/LoginScreen
+ * @file RegistroScreen.js
+ * @description Pantalla de registro de nuevos usuarios en CanchaYa.
+ * Valida nombre completo, formato de correo, longitud mínima de contraseña (6 caracteres)
+ * y coincidencia de confirmación antes de enviar a Firebase Authentication.
+ * @module screens/RegistroScreen
  */
 
 import React, { useState } from 'react';
@@ -17,59 +17,68 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContexto';
 
 /**
- * Pantalla de inicio de sesión.
+ * Pantalla de registro de usuario.
  *
  * @param {Object} props
- * @param {Object} [props.navigation] - Objeto de navegación provisto por React Navigation.
- * @param {Function} [props.onIrARegistro] - Callback alternativo para alternar a la pantalla de registro.
+ * @param {Object} [props.navigation] - Objeto de navegación de React Navigation.
+ * @param {Function} [props.onIrALogin] - Callback alternativo para regresar al login.
  * @returns {React.JSX.Element}
  */
-export default function LoginScreen({ navigation, onIrARegistro }) {
-  const { login } = useAuth();
+export default function RegistroScreen({ navigation, onIrALogin }) {
+  const { register } = useAuth();
 
+  const [nombre, setNombre] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmarPassword, setConfirmarPassword] = useState('');
   const [mostrarPassword, setMostrarPassword] = useState(false);
   const [cargando, setCargando] = useState(false);
   const [errorLocal, setErrorLocal] = useState('');
 
-  // Validaciones del lado del cliente antes de enviar a Firebase
   const validarFormulario = () => {
     setErrorLocal('');
 
-    if (!email.trim()) {
-      setErrorLocal('Ingresa tu correo electrónico.');
+    if (!nombre.trim()) {
+      setErrorLocal('Ingresa tu nombre completo.');
       return false;
     }
 
-    // Expresión regular estándar para validación básica de correo
+    if (!email.trim()) {
+      setErrorLocal('Ingresa tu correo institucional o personal.');
+      return false;
+    }
+
     const regexEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!regexEmail.test(email.trim())) {
       setErrorLocal('El formato del correo electrónico no es válido.');
       return false;
     }
 
-    if (!password) {
-      setErrorLocal('Ingresa tu contraseña.');
+    if (password.length < 6) {
+      setErrorLocal('La contraseña debe tener al menos 6 caracteres.');
+      return false;
+    }
+
+    if (password !== confirmarPassword) {
+      setErrorLocal('Las contraseñas no coinciden. Verifícalas.');
       return false;
     }
 
     return true;
   };
 
-  const handleLogin = async () => {
+  const handleRegistro = async () => {
     if (!validarFormulario()) return;
 
     try {
       setCargando(true);
       setErrorLocal('');
-      await login(email, password);
-      // Al resolverse el login, AuthContexto actualiza 'user' y el router redirige automáticamente
+      await register(email, password, nombre);
+      // Tras registrarse con éxito, el contexto actualiza el usuario automáticamente
     } catch (error) {
       setErrorLocal(error.message);
     } finally {
@@ -77,11 +86,13 @@ export default function LoginScreen({ navigation, onIrARegistro }) {
     }
   };
 
-  const handleNavegarARegistro = () => {
-    if (navigation?.navigate) {
-      navigation.navigate('Registro');
-    } else if (onIrARegistro) {
-      onIrARegistro();
+  const handleRegresarALogin = () => {
+    if (navigation?.goBack) {
+      navigation.goBack();
+    } else if (navigation?.navigate) {
+      navigation.navigate('Login');
+    } else if (onIrALogin) {
+      onIrALogin();
     }
   };
 
@@ -94,34 +105,42 @@ export default function LoginScreen({ navigation, onIrARegistro }) {
         contentContainerStyle={styles.scrollInterno}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Cabecera / Branding */}
+        {/* Cabecera */}
         <View style={styles.cabecera}>
-          <View style={styles.circuloLogo}>
-            <Text style={styles.iconoLogo}>🏟️</Text>
-          </View>
-          <Text style={styles.titulo}>CanchaYa</Text>
+          <Text style={styles.titulo}>Crear Cuenta</Text>
           <Text style={styles.subtitulo}>
-            Reserva de escenarios deportivos y bienestar
+            Únete a CanchaYa para reservar espacios deportivos del TdeA
           </Text>
-          <Text style={styles.insigniaTdeA}>Tecnológico de Antioquia</Text>
         </View>
 
         {/* Tarjeta del Formulario */}
         <View style={styles.tarjetaFormulario}>
-          <Text style={styles.tituloFormulario}>Iniciar Sesión</Text>
-
-          {/* Mensaje de Error en pantalla */}
+          {/* Alerta de Error */}
           {errorLocal ? (
             <View style={styles.cajaError}>
               <Text style={styles.textoError}>⚠️ {errorLocal}</Text>
             </View>
           ) : null}
 
-          {/* Campo Correo */}
+          {/* Nombre Completo */}
+          <Text style={styles.label}>Nombre Completo</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Ej. Juan Pérez"
+            placeholderTextColor="#94A3B8"
+            autoCapitalize="words"
+            value={nombre}
+            onChangeText={(texto) => {
+              setNombre(texto);
+              if (errorLocal) setErrorLocal('');
+            }}
+          />
+
+          {/* Correo Electrónico */}
           <Text style={styles.label}>Correo Electrónico</Text>
           <TextInput
             style={styles.input}
-            placeholder="usuario@tdea.edu.co"
+            placeholder="juan.perez@tdea.edu.co"
             placeholderTextColor="#94A3B8"
             keyboardType="email-address"
             autoCapitalize="none"
@@ -133,8 +152,8 @@ export default function LoginScreen({ navigation, onIrARegistro }) {
             }}
           />
 
-          {/* Campo Contraseña */}
-          <Text style={styles.label}>Contraseña</Text>
+          {/* Contraseña */}
+          <Text style={styles.label}>Contraseña (mínimo 6 caracteres)</Text>
           <View style={styles.contenedorPassword}>
             <TextInput
               style={styles.inputPassword}
@@ -151,31 +170,47 @@ export default function LoginScreen({ navigation, onIrARegistro }) {
             <TouchableOpacity
               style={styles.botonOjo}
               onPress={() => setMostrarPassword(!mostrarPassword)}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               <Text style={styles.textoOjo}>{mostrarPassword ? '🙈' : '👁️'}</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Botón de Ingreso */}
+          {/* Confirmar Contraseña */}
+          <Text style={styles.label}>Confirmar Contraseña</Text>
+          <View style={styles.contenedorPassword}>
+            <TextInput
+              style={styles.inputPassword}
+              placeholder="••••••••"
+              placeholderTextColor="#94A3B8"
+              secureTextEntry={!mostrarPassword}
+              autoCapitalize="none"
+              value={confirmarPassword}
+              onChangeText={(texto) => {
+                setConfirmarPassword(texto);
+                if (errorLocal) setErrorLocal('');
+              }}
+            />
+          </View>
+
+          {/* Botón de Registro */}
           <TouchableOpacity
-            style={[styles.botonIngreso, cargando && styles.botonDeshabilitado]}
-            onPress={handleLogin}
+            style={[styles.botonRegistro, cargando && styles.botonDeshabilitado]}
+            onPress={handleRegistro}
             disabled={cargando}
             activeOpacity={0.85}
           >
             {cargando ? (
               <ActivityIndicator color="#FFFFFF" size="small" />
             ) : (
-              <Text style={styles.textoBotonIngreso}>Ingresar a CanchaYa</Text>
+              <Text style={styles.textoBotonRegistro}>Completar Registro</Text>
             )}
           </TouchableOpacity>
 
-          {/* Enlace hacia Registro */}
-          <View style={styles.filaRegistro}>
-            <Text style={styles.textoPregunta}>¿No tienes una cuenta? </Text>
-            <TouchableOpacity onPress={handleNavegarARegistro}>
-              <Text style={styles.textoEnlaceRegistro}>Regístrate aquí</Text>
+          {/* Enlace para volver a Iniciar Sesión */}
+          <View style={styles.filaLogin}>
+            <Text style={styles.textoPregunta}>¿Ya tienes una cuenta? </Text>
+            <TouchableOpacity onPress={handleRegresarALogin}>
+              <Text style={styles.textoEnlaceLogin}>Inicia sesión</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -197,27 +232,10 @@ const styles = StyleSheet.create({
   },
   cabecera: {
     alignItems: 'center',
-    marginBottom: 28,
-  },
-  circuloLogo: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: '#0284C7',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-    shadowColor: '#0284C7',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  iconoLogo: {
-    fontSize: 34,
+    marginBottom: 24,
   },
   titulo: {
-    fontSize: 30,
+    fontSize: 28,
     fontWeight: '800',
     color: '#0F172A',
     letterSpacing: -0.5,
@@ -226,15 +244,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#64748B',
     textAlign: 'center',
-    marginTop: 4,
-  },
-  insigniaTdeA: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#0284C7',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
     marginTop: 6,
+    paddingHorizontal: 12,
   },
   tarjetaFormulario: {
     backgroundColor: '#FFFFFF',
@@ -247,12 +258,6 @@ const styles = StyleSheet.create({
     elevation: 3,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-  },
-  tituloFormulario: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 16,
   },
   cajaError: {
     backgroundColor: '#FEF2F2',
@@ -291,7 +296,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#CBD5E1',
     borderRadius: 12,
-    marginBottom: 20,
+    marginBottom: 14,
   },
   inputPassword: {
     flex: 1,
@@ -306,12 +311,13 @@ const styles = StyleSheet.create({
   textoOjo: {
     fontSize: 18,
   },
-  botonIngreso: {
+  botonRegistro: {
     backgroundColor: '#0284C7',
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 8,
     shadowColor: '#0284C7',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.2,
@@ -321,12 +327,12 @@ const styles = StyleSheet.create({
   botonDeshabilitado: {
     backgroundColor: '#94A3B8',
   },
-  textoBotonIngreso: {
+  textoBotonRegistro: {
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '700',
   },
-  filaRegistro: {
+  filaLogin: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
@@ -336,7 +342,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#64748B',
   },
-  textoEnlaceRegistro: {
+  textoEnlaceLogin: {
     fontSize: 13,
     fontWeight: '700',
     color: '#0284C7',
