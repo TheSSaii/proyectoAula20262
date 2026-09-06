@@ -2,7 +2,7 @@
  * @file DisponibilidadScreen.js
  * @description Pantalla para la selección de fecha y consulta de franjas horarias libres/ocupadas.
  * Estructurada en la arquitectura como la pantalla de paso hacia el Motor de Disponibilidad (Programador 3 - T12).
- * Recibe el escenario seleccionado desde DetalleScreen.
+ * Incluye un botón de prueba temporal para que el Programador 4 valide su flujo de reserva (T14/T15)[cite: 1, 2].
  * @module screens/DisponibilidadScreen
  */
 
@@ -16,7 +16,6 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import Badge from '../components/Badge';
-
 export default function DisponibilidadScreen({ route, navigation }) {
   const { escenario } = route.params || {};
 
@@ -54,12 +53,36 @@ export default function DisponibilidadScreen({ route, navigation }) {
             <Text style={styles.itemPendiente}>• consultarDisponibilidad(id, fecha) (T10)</Text>
           </View>
 
-          <TouchableOpacity
-            style={styles.botonVolver}
-            onPress={() => navigation.goBack()}
-          >
-            <Text style={styles.textoBotonVolver}>← Volver a Ficha Técnica</Text>
-          </TouchableOpacity>
+          
+          <View style={styles.contenedorBotones}>
+            
+            {/* Botón Volver de Prog 3 */}
+            <TouchableOpacity
+              style={styles.botonVolver}
+              onPress={() => navigation.goBack()}
+            >
+              <Text style={styles.textoBotonVolver}>← Volver a Ficha Técnica</Text>
+            </TouchableOpacity>
+
+            
+            <TouchableOpacity
+              style={styles.botonTestP4}
+              onPress={() => navigation.navigate('ConfirmacionReserva', {
+                // Mandamos datos falsos (Mocks) para simular que el usuario ya eligió una franja
+                escenario: escenario || { id: 'TEST-123', nombre: 'Cancha Sintética (Prueba)', ubicacion: 'Zona Sur' },
+                fecha: '2026-09-12', // Una fecha de ejemplo para probar
+                hora: '14:00' // Una hora de ejemplo para probar
+                // NOTA: Cuando Programador 3 termine, simplemente se usará navigation.navigate desde su SlotPicker.
+              })}
+            >
+              <Text style={styles.textoBotonTest}>
+                🧪 [TEST P4] Simular Selección y saltar a Confirmación
+              </Text>
+            </TouchableOpacity>
+            {/* --- FIN DEL BOTÓN DE PRUEBA --- */}
+
+          </View>
+
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -168,13 +191,32 @@ const styles = StyleSheet.create({
     color: '#64748B',
     lineHeight: 18,
   },
+  // --- NUEVO CONTENEDOR DE BOTONES ---
+  contenedorBotones: {
+    width: '100%',
+    gap: 12, // Espacio ordenado entre botones
+  },
   botonVolver: {
+    width: '100%',
     backgroundColor: '#0284C7',
     paddingVertical: 12,
-    paddingHorizontal: 20,
     borderRadius: 10,
+    alignItems: 'center',
   },
   textoBotonVolver: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  // --- ESTILOS PARA EL BOTÓN VERDE DE PRUEBA P4 ---
+  botonTestP4: {
+    width: '100%',
+    backgroundColor: '#16A34A', // Un verde distinto para diferenciarlo
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  textoBotonTest: {
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
