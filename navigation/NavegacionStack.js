@@ -7,6 +7,7 @@
 
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
+import ConfirmacionReservaScreen from '../screens/ConfirmacionReservaScreen';
 import InicioScreen from '../screens/InicioScreen';
 import DetalleScreen from '../screens/DetalleScreen';
 import DisponibilidadScreen from '../screens/DisponibilidadScreen';
@@ -58,6 +59,9 @@ export default function NavegacionStack() {
         options={{
           title: '📅 Disponibilidad de Franjas',
         }}
+      />
+      <Stack.Screen name="ConfirmacionReserva" 
+      component={ConfirmacionReservaScreen} 
       />
     </Stack.Navigator>
   );
