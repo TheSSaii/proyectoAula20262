@@ -7,15 +7,16 @@ const Tab = createBottomTabNavigator();
 const NavegacionTabs = () => {
     return (
         <Tab.Navigator initialRouteName="Inicio" screenOptions={({ route })
-    ({
+=> ({
+    
     tabBarIcon: ({ color, size }) => {
-    let icono;
-    if (route.name === 'Inicio') {
-        icono = 'home';
-    } else if (route.name === 'Configuracion') {
-        icono = 'settings';
-    }
-    return <Ionicons name={icono} size={size} color={color} />;
+        let icono;
+        if (route.name === 'Inicio') {
+            icono = 'home';
+        } else if (route.name === 'Configuracion') {
+            icono = 'settings';
+        }
+        return <Ionicons name={icono} size={size} color={color} />;
     },
     })}>
     <Tab.Screen name="Inicio" component={InicioScreen} options={{
