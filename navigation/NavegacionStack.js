@@ -62,6 +62,7 @@ export default function NavegacionStack() {
       />
       <Stack.Screen name="ConfirmacionReserva" 
       component={ConfirmacionReservaScreen} 
+
       />
     </Stack.Navigator>
   );

@@ -6,7 +6,7 @@ import InicioScreen from '../pantallas/InicioScreen';
 import ConfigScreen from '../pantallas/ConfigScreen';
 import { Ionicons } from '@expo/vector-icons';
 
-// Definimos 'Tab' con mayúscula (esto es correcto)
+
 const Tab = createBottomTabNavigator();
 
 const NavegacionTabs = () => {
@@ -18,9 +18,9 @@ const NavegacionTabs = () => {
                     let icono;
                     if (route.name === 'Inicio') {
                         icono = 'home';
-                    // CORRECCIÓN 3: Agregamos el ícono para tu nueva pestaña
+                    
                     } else if (route.name === 'Mis Reservas') {
-                        icono = 'calendar'; // Usamos un ícono sencillo de calendario
+                        icono = 'calendar'; 
                     } else if (route.name === 'Configuracion') {
                         icono = 'settings';
                     }

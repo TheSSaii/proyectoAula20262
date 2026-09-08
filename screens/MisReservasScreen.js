@@ -16,7 +16,7 @@ export default function MisReservasScreen() {
   const [reservas, setReservas] = useState([]);
   const [cargando, setCargando] = useState(true);
 
-  // Lógica en tiempo real (T15)
+  
   useEffect(() => {
     if (!user) {
       setCargando(false);
@@ -44,7 +44,7 @@ export default function MisReservasScreen() {
     return () => unsubscribe();
   }, [user]);
 
-  // Diseño de cada tarjeta de reserva en la lista
+
   const renderItem = ({ item }) => (
     <View style={styles.tarjetaReserva}>
       <Text style={styles.nombreEscenario}>{item.nombreEscenario}</Text>
@@ -82,7 +82,7 @@ export default function MisReservasScreen() {
         </View>
       ) : (
         <View style={styles.contenedorLista}>
-          {/* 3. Estado con Datos (La lista en tiempo real) */}
+          
           <Text style={styles.tituloCabecera}>Mis Reservas</Text>
           <FlatList
             data={reservas}
@@ -94,14 +94,13 @@ export default function MisReservasScreen() {
       )}
     </SafeAreaView>
   );
-} // <--- SE CERRÓ LA FUNCIÓN DEL COMPONENTE AQUÍ
+}
 
 const styles = StyleSheet.create({
   contenedor: {
     flex: 1,
     backgroundColor: '#F8FAFC',
   },
-  // Estilos para los estados de carga y vacío (los tuyos originales)
   contenidoCentro: {
     flex: 1,
     justifyContent: 'center',
@@ -151,7 +150,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#64748B',
   },
-  // Estilos nuevos para la lista
   contenedorLista: {
     flex: 1,
     padding: 16,
@@ -165,42 +163,9 @@ const styles = StyleSheet.create({
   listaScroll: {
     paddingBottom: 20,
   },
-  tarjetaReserva: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginBottom: 12,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  nombreEscenario: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0369A1',
-    marginBottom: 8,
-  },
-  textoDetalle: {
-    fontSize: 14,
-    color: '#475569',
-    marginBottom: 4,
-  },
-  badgeEstado: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#DCFCE7',
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 6,
-    marginTop: 8,
-  },
-  textoBadge: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#166534',
-    textTransform: 'capitalize',
-  },
+  tarjetaResumen: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 12 }, // Estilo para T14 resumido
+  nombreEscenario: { fontSize: 16, fontWeight: '700', color: '#0369A1', marginBottom: 8 },
+  textoDetalle: { fontSize: 14, color: '#475569', marginBottom: 4 },
+  badgeEstado: { alignSelf: 'flex-start', backgroundColor: '#DCFCE7', paddingVertical: 4, paddingHorizontal: 8, borderRadius: 6, marginTop: 8 },
+  textoBadge: { fontSize: 12, fontWeight: '700', color: '#166534', textTransform: 'capitalize' },
 });
