@@ -7,7 +7,7 @@
  */
 
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import { initializeAuth, getReactNativePersistence, getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -25,10 +25,15 @@ const firebaseConfig = {
 // 1. Inicialización idempotente de Firebase App para evitar duplicaciones en recargas de desarrollo
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-// 2. Inicialización de Autenticación con persistencia nativa en AsyncStorage
-const auth = initializeAuth(app, {
-  persistence: getReactNativePersistence(AsyncStorage),
-});
+// 2. Inicialización idempotente de Autenticación con persistencia en AsyncStorage
+let auth;
+try {
+  auth = initializeAuth(app, {
+    persistence: getReactNativePersistence(AsyncStorage),
+  });
+} catch (error) {
+  auth = getAuth(app);
+}
 
 // 3. Inicialización del cliente de Cloud Firestore
 const db = getFirestore(app);

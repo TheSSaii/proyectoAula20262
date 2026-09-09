@@ -101,7 +101,7 @@ export default function LoginScreen({ navigation, onIrARegistro }) {
           </View>
           <Text style={styles.titulo}>CanchaYa</Text>
           <Text style={styles.subtitulo}>
-            Reserva de escenarios deportivos y bienestar
+            Extensión Móvil de Campus TdeA · Cátedras ACUDE
           </Text>
           <Text style={styles.insigniaTdeA}>Tecnológico de Antioquia</Text>
         </View>

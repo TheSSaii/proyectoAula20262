@@ -1,6 +1,7 @@
 /**
  * @file Badge.js
- * @description Componente visual atómico para mostrar etiquetas y estados (disponible, mantenimiento, ocupado).
+ * @description Componente visual atómico para mostrar etiquetas y estados en Cátedras ACUDE
+ * (cupos disponibles, agotado/sobrecupo, inscrito, deportiva, cultural).
  * Diseñado con contraste accesible y estilo tipo 'píldora' para su uso en tarjetas y pantallas.
  * @module components/Badge
  */
@@ -9,38 +10,62 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
 /**
- * Paleta semántica para estados y etiquetas informativas.
+ * Paleta semántica para estados y etiquetas de Cátedras ACUDE.
  * Cada clave contiene color de fondo, texto y borde para mantener coherencia visual.
  */
 const PALETA_ESTADOS = {
   disponible: {
     fondo: '#E8F5E9',
-    texto: '#2E7D32',
+    texto: '#1B5E20',
     borde: '#C8E6C9',
-    labelPorDefecto: 'Disponible',
+    labelPorDefecto: 'Cupos disponibles',
+  },
+  agotado: {
+    fondo: '#FFF3E0',
+    texto: '#D84315',
+    borde: '#FFE0B2',
+    labelPorDefecto: 'Agotado (Ver sobrecupo)',
+  },
+  inscrito: {
+    fondo: '#E0F2FE',
+    texto: '#0369A1',
+    borde: '#BAE6FD',
+    labelPorDefecto: 'Inscrito',
+  },
+  cultural: {
+    fondo: '#F3E8FF',
+    texto: '#7E22CE',
+    borde: '#E9D5FF',
+    labelPorDefecto: 'Cultural',
+  },
+  deportiva: {
+    fondo: '#ECFDF5',
+    texto: '#047857',
+    borde: '#A7F3D0',
+    labelPorDefecto: 'Deportiva',
   },
   mantenimiento: {
-    fondo: '#FFF8E1',
-    texto: '#F57F17',
-    borde: '#FFE082',
+    fondo: '#FFFBEB',
+    texto: '#B45309',
+    borde: '#FDE68A',
     labelPorDefecto: 'Mantenimiento',
   },
-  ocupado: {
-    fondo: '#FFEBEE',
-    texto: '#C62828',
-    borde: '#FFCDD2',
-    labelPorDefecto: 'Ocupado',
+  cancelado: {
+    fondo: '#FEF2F2',
+    texto: '#B91C1C',
+    borde: '#FECACA',
+    labelPorDefecto: 'Cancelada',
   },
   info: {
-    fondo: '#E3F2FD',
-    texto: '#1565C0',
-    borde: '#BBDEFB',
+    fondo: '#F0F9FF',
+    texto: '#0284C7',
+    borde: '#BAE6FD',
     labelPorDefecto: 'Info',
   },
   default: {
-    fondo: '#F5F5F5',
-    texto: '#616161',
-    borde: '#E0E0E0',
+    fondo: '#F1F5F9',
+    texto: '#475569',
+    borde: '#E2E8F0',
     labelPorDefecto: 'General',
   },
 };
@@ -48,12 +73,12 @@ const PALETA_ESTADOS = {
 /**
  * Componente Badge reutilizable.
  *
- * @param {Object} props - Propiedades del componente.
+ * @param {Object} props
  * @param {string} [props.texto] - Texto a mostrar. Si no se provee, usa el label por defecto del estado.
- * @param {('disponible'|'mantenimiento'|'ocupado'|'info'|'default')} [props.estado='default'] - Clave semántica del estado.
- * @param {('pequeno'|'mediano')} [props.tamano='mediano'] - Tamaño visual del badge.
- * @param {object} [props.style] - Estilos adicionales para el contenedor del badge.
- * @param {object} [props.textStyle] - Estilos adicionales para el texto del badge.
+ * @param {('disponible'|'agotado'|'inscrito'|'cultural'|'deportiva'|'mantenimiento'|'cancelado'|'info'|'default')} [props.estado='default']
+ * @param {('pequeno'|'mediano')} [props.tamano='mediano']
+ * @param {object} [props.style]
+ * @param {object} [props.textStyle]
  * @returns {React.JSX.Element}
  */
 export default function Badge({
@@ -63,8 +88,7 @@ export default function Badge({
   style,
   textStyle,
 }) {
-  // Normalizar estado a minúsculas para evitar errores de tipeo
-  const estadoNormalizado = (estado || 'default').toLowerCase();
+  const estadoNormalizado = (estado || 'default').toLowerCase().trim();
   const configuracion = PALETA_ESTADOS[estadoNormalizado] || PALETA_ESTADOS.default;
   const textoAMostrar = texto || configuracion.labelPorDefecto;
 
@@ -131,7 +155,7 @@ const styles = StyleSheet.create({
     marginRight: 4,
   },
   texto: {
-    fontWeight: '600',
+    fontWeight: '700',
     letterSpacing: 0.2,
   },
   textoMediano: {

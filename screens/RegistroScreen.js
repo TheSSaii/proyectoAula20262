@@ -109,7 +109,7 @@ export default function RegistroScreen({ navigation, onIrALogin }) {
         <View style={styles.cabecera}>
           <Text style={styles.titulo}>Crear Cuenta</Text>
           <Text style={styles.subtitulo}>
-            Únete a CanchaYa para reservar espacios deportivos del TdeA
+            Únete a CanchaYa para consultar e inscribirte a Cátedras ACUDE de Bienestar TdeA
           </Text>
         </View>
 

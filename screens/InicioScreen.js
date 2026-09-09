@@ -1,9 +1,12 @@
 /**
  * @file InicioScreen.js
- * @description Pantalla principal de catálogo de escenarios deportivos (Tarea T08).
- * Consume la capa de servicios (escenariosService.js) conectada a Cloud Firestore,
- * provee un motor de búsqueda en tiempo real, filtrado por categorías deportivas (chips),
- * estado de carga, Pull-to-Refresh y renderizado optimizado en FlatList con EscenarioCard.
+ * @description Pantalla principal del Catálogo de Cátedras y Actividades ACUDE
+ * (Bienestar Institucional - Tecnológico de Antioquia).
+ * Extensión móvil complementaria de Campus TdeA.
+ * Provee búsqueda en tiempo real, chips de categoría ('Todos', 'Deportivas', 'Culturales'),
+ * renderizado optimizado en FlatList con AcudeCard, pull-to-refresh y botón de siembra
+ * rápida si Firestore no tiene datos.
+ * El TextInput permanece fuera del FlatList para garantizar persistencia estricta del foco del teclado.
  * @module screens/InicioScreen
  */
 
@@ -21,53 +24,39 @@ import {
   SafeAreaView,
   StatusBar,
   Platform,
+  Alert,
 } from 'react-native';
-import EscenarioCard from '../components/EscenarioCard';
+import AcudeCard from '../components/AcudeCard';
 import Badge from '../components/Badge';
-import { getEscenarios } from '../services/escenariosService';
+import { getAcudes } from '../services/acudesService';
+import { ejecutarSeedAcudes } from '../services/seedAcudes';
 import { useAuth } from '../contexts/AuthContexto';
 
-/**
- * Categorías deportivas para el filtrado rápido por chips.
- */
-const CATEGORIAS_FILTRO = [
-  'Todos',
-  'Fútbol',
-  'Baloncesto',
-  'Voleibol',
-  'Acondicionamiento',
-  'Tenis de Mesa',
-];
+const CATEGORIAS_FILTRO = ['Todos', 'Deportivas', 'Culturales'];
 
-/**
- * Pantalla de Catálogo de Escenarios con filtrado dinámico.
- *
- * @param {Object} props
- * @param {Object} props.navigation - React Navigation prop.
- * @returns {React.JSX.Element}
- */
 export default function InicioScreen({ navigation }) {
   const { user } = useAuth();
 
-  const [escenarios, setEscenarios] = useState([]);
+  const [acudes, setAcudes] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [refrescando, setRefrescando] = useState(false);
+  const [sembrando, setSembrando] = useState(false);
   const [error, setError] = useState(null);
 
-  // Estados de filtrado y búsqueda
+  // Estados de filtrado y búsqueda reactiva
   const [busqueda, setBusqueda] = useState('');
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState('Todos');
 
   /**
-   * Carga los datos de escenarios desde Firestore mediante el servicio.
+   * Carga las actividades ACUDE desde Firestore.
    */
   const cargarDatos = useCallback(async () => {
     try {
       setError(null);
-      const datos = await getEscenarios();
-      setEscenarios(datos);
+      const datos = await getAcudes();
+      setAcudes(datos);
     } catch (err) {
-      console.error('Error al cargar escenarios en InicioScreen:', err);
+      console.error('Error al cargar actividades ACUDE en InicioScreen:', err);
       setError(err.message);
     } finally {
       setCargando(false);
@@ -85,67 +74,113 @@ export default function InicioScreen({ navigation }) {
   };
 
   /**
-   * Filtra los escenarios en memoria según el texto de búsqueda y la categoría seleccionada.
+   * Permite poblar Firestore directamente desde la app si la base de datos está vacía.
    */
-  const escenariosFiltrados = useMemo(() => {
-    return escenarios.filter((escenario) => {
-      const termino = busqueda.toLowerCase().trim();
-      const coincideBusqueda =
-        !termino ||
-        escenario.nombre?.toLowerCase().includes(termino) ||
-        escenario.tipo?.toLowerCase().includes(termino) ||
-        escenario.ubicacion?.toLowerCase().includes(termino);
-
-      const coincideCategoria =
-        categoriaSeleccionada === 'Todos' ||
-        escenario.tipo?.toLowerCase().includes(categoriaSeleccionada.toLowerCase());
-
-      return coincideBusqueda && coincideCategoria;
-    });
-  }, [escenarios, busqueda, categoriaSeleccionada]);
-
-  const handleSeleccionarEscenario = (escenario) => {
-    navigation.navigate('Detalle', { escenario });
+  const handleSembrarDatos = async () => {
+    try {
+      setSembrando(true);
+      const res = await ejecutarSeedAcudes();
+      Alert.alert('Datos Sembrados', res.mensaje);
+      await cargarDatos();
+    } catch (err) {
+      Alert.alert('Error al sembrar', err.message);
+    } finally {
+      setSembrando(false);
+    }
   };
 
   /**
-   * Componente para listado vacío (sin resultados tras filtrar).
+   * Filtro en memoria por texto (nombre, docente, ubicación, disciplina) y chip de categoría.
    */
-  const renderVacio = () => (
-    <View style={styles.contenedorVacio}>
-      <Text style={styles.iconoVacio}>🔎</Text>
-      <Text style={styles.tituloVacio}>No encontramos escenarios</Text>
-      <Text style={styles.textoVacio}>
-        No hay coincidencias para "{busqueda || categoriaSeleccionada}". Intenta con otros términos o limpia los filtros.
-      </Text>
-      <TouchableOpacity
-        style={styles.botonLimpiarTodo}
-        onPress={() => {
-          setBusqueda('');
-          setCategoriaSeleccionada('Todos');
-        }}
-      >
-        <Text style={styles.textoBotonLimpiarTodo}>Mostrar todos los escenarios</Text>
-      </TouchableOpacity>
-    </View>
-  );
+  const acudesFiltrados = useMemo(() => {
+    return acudes.filter((acude) => {
+      const termino = busqueda.toLowerCase().trim();
+      const coincideBusqueda =
+        !termino ||
+        acude.nombre?.toLowerCase().includes(termino) ||
+        acude.docente?.toLowerCase().includes(termino) ||
+        acude.disciplina?.toLowerCase().includes(termino) ||
+        acude.ubicacion?.toLowerCase().includes(termino);
+
+      let coincideCategoria = true;
+      if (categoriaSeleccionada === 'Deportivas') {
+        coincideCategoria = acude.categoria?.toLowerCase() === 'deportiva';
+      } else if (categoriaSeleccionada === 'Culturales') {
+        coincideCategoria = acude.categoria?.toLowerCase() === 'cultural';
+      }
+
+      return coincideBusqueda && coincideCategoria;
+    });
+  }, [acudes, busqueda, categoriaSeleccionada]);
+
+  const handleSeleccionarAcude = (acude) => {
+    navigation.navigate('Detalle', { acude });
+  };
+
+  const renderVacio = () => {
+    // Si no hay acudes en la base de datos en lo absoluto
+    if (acudes.length === 0) {
+      return (
+        <View style={styles.contenedorVacio}>
+          <Text style={styles.iconoVacio}>🌱</Text>
+          <Text style={styles.tituloVacio}>Base de datos lista para sembrar</Text>
+          <Text style={styles.textoVacio}>
+            Aún no se encuentran registradas las cátedras ACUDE del TdeA en Firestore.
+            Puedes cargar el catálogo oficial de Bienestar Institucional con un toque:
+          </Text>
+          <TouchableOpacity
+            style={styles.botonSembrar}
+            onPress={handleSembrarDatos}
+            disabled={sembrando}
+          >
+            {sembrando ? (
+              <ActivityIndicator color="#FFFFFF" size="small" />
+            ) : (
+              <Text style={styles.textoBotonSembrar}>
+                🌱 Cargar Cátedras ACUDE TdeA (Seed)
+              </Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    // Si hay acudes pero no coinciden con la búsqueda/filtro
+    return (
+      <View style={styles.contenedorVacio}>
+        <Text style={styles.iconoVacio}>🔎</Text>
+        <Text style={styles.tituloVacio}>No encontramos cátedras coincidentes</Text>
+        <Text style={styles.textoVacio}>
+          No hay actividades para "{busqueda || categoriaSeleccionada}". Prueba con otros términos o restablece los filtros.
+        </Text>
+        <TouchableOpacity
+          style={styles.botonLimpiarTodo}
+          onPress={() => {
+            setBusqueda('');
+            setCategoriaSeleccionada('Todos');
+          }}
+        >
+          <Text style={styles.textoBotonLimpiarTodo}>Mostrar todas las cátedras</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.contenedor}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
 
-      {/* Cabecera fija: Saludo, Buscador y Filtros por Categoría */}
-      {/* Al estar fuera del FlatList, el TextInput NUNCA se desmonta ni pierde el foco al escribir */}
+      {/* Cabecera estática: Saludo, Buscador y Filtros fuera del FlatList */}
       <View style={styles.cabeceraContenedor}>
-        {/* Saludo y bienvenida */}
+        {/* Saludo institucional y badge */}
         <View style={styles.filaSaludo}>
           <View>
-            <Text style={styles.subtituloSaludo}>Bienvenido a CanchaYa</Text>
+            <Text style={styles.subtituloSaludo}>CanchaYa · Extensión Campus TdeA</Text>
             <Text style={styles.tituloUsuario}>
               {user?.displayName || 'Estudiante TdeA'} 👋
             </Text>
           </View>
-          <Badge estado="info" texto="Campus Robledo" tamano="pequeno" />
+          <Badge estado="info" texto="Bienestar Bloque 10" tamano="pequeno" />
         </View>
 
         {/* Barra de búsqueda */}
@@ -153,14 +188,17 @@ export default function InicioScreen({ navigation }) {
           <Text style={styles.iconoBuscador}>🔍</Text>
           <TextInput
             style={styles.inputBuscador}
-            placeholder="Buscar por nombre, tipo o bloque..."
+            placeholder="Buscar por taller, docente o espacio (Bloque 10)..."
             placeholderTextColor="#94A3B8"
             value={busqueda}
             onChangeText={setBusqueda}
             autoCorrect={false}
           />
           {busqueda.length > 0 && (
-            <TouchableOpacity onPress={() => setBusqueda('')} style={styles.botonLimpiar}>
+            <TouchableOpacity
+              onPress={() => setBusqueda('')}
+              style={styles.botonLimpiar}
+            >
               <Text style={styles.textoLimpiar}>✕</Text>
             </TouchableOpacity>
           )}
@@ -172,16 +210,16 @@ export default function InicioScreen({ navigation }) {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.scrollCategorias}
         >
-          {CATEGORIAS_FILTRO.map((categoria) => {
-            const estaActiva = categoriaSeleccionada === categoria;
+          {CATEGORIAS_FILTRO.map((cat) => {
+            const estaActiva = categoriaSeleccionada === cat;
             return (
               <TouchableOpacity
-                key={categoria}
+                key={cat}
                 style={[
                   styles.chipCategoria,
                   estaActiva && styles.chipCategoriaActiva,
                 ]}
-                onPress={() => setCategoriaSeleccionada(categoria)}
+                onPress={() => setCategoriaSeleccionada(cat)}
                 activeOpacity={0.7}
               >
                 <Text
@@ -190,7 +228,7 @@ export default function InicioScreen({ navigation }) {
                     estaActiva && styles.textoChipActivo,
                   ]}
                 >
-                  {categoria}
+                  {cat === 'Todos' ? '✨ Todas las Cátedras' : cat === 'Deportivas' ? '⚽ Deportivas' : '🎭 Culturales'}
                 </Text>
               </TouchableOpacity>
             );
@@ -200,9 +238,9 @@ export default function InicioScreen({ navigation }) {
         {/* Contador de resultados */}
         <View style={styles.filaContador}>
           <Text style={styles.textoContador}>
-            {escenariosFiltrados.length === 1
-              ? '1 escenario disponible'
-              : `${escenariosFiltrados.length} escenarios disponibles`}
+            {acudesFiltrados.length === 1
+              ? '1 cátedra disponible'
+              : `${acudesFiltrados.length} cátedras disponibles`}
           </Text>
           {(categoriaSeleccionada !== 'Todos' || busqueda.length > 0) && (
             <TouchableOpacity
@@ -217,11 +255,13 @@ export default function InicioScreen({ navigation }) {
         </View>
       </View>
 
-      {/* Lista de escenarios */}
+      {/* Listado reactivo de Cátedras ACUDE */}
       {cargando && !refrescando ? (
         <View style={styles.centroCarga}>
           <ActivityIndicator size="large" color="#0284C7" />
-          <Text style={styles.textoCargando}>Consultando escenarios en Firestore...</Text>
+          <Text style={styles.textoCargando}>
+            Consultando Cátedras ACUDE en Firestore...
+          </Text>
         </View>
       ) : error ? (
         <View style={styles.cajaError}>
@@ -233,13 +273,10 @@ export default function InicioScreen({ navigation }) {
         </View>
       ) : (
         <FlatList
-          data={escenariosFiltrados}
+          data={acudesFiltrados}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <EscenarioCard
-              escenario={item}
-              onPress={handleSeleccionarEscenario}
-            />
+            <AcudeCard acude={item} onPress={handleSeleccionarAcude} />
           )}
           ListEmptyComponent={renderVacio}
           contentContainerStyle={styles.listaContenedor}
@@ -278,9 +315,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   subtituloSaludo: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#64748B',
-    fontWeight: '500',
+    fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -331,7 +368,7 @@ const styles = StyleSheet.create({
   chipCategoria: {
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 14,
-    paddingVertical: 7,
+    paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
     borderColor: '#E2E8F0',
@@ -348,6 +385,7 @@ const styles = StyleSheet.create({
   },
   textoChipActivo: {
     color: '#FFFFFF',
+    fontWeight: '700',
   },
   filaContador: {
     flexDirection: 'row',
@@ -407,7 +445,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   contenedorVacio: {
-    padding: 40,
+    padding: 32,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -420,13 +458,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#0F172A',
     marginBottom: 6,
+    textAlign: 'center',
   },
   textoVacio: {
     fontSize: 13,
     color: '#64748B',
     textAlign: 'center',
     lineHeight: 18,
-    marginBottom: 16,
+    marginBottom: 18,
   },
   botonLimpiarTodo: {
     backgroundColor: '#F1F5F9',
@@ -438,5 +477,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#0284C7',
+  },
+  botonSembrar: {
+    backgroundColor: '#16A34A',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    shadowColor: '#16A34A',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  textoBotonSembrar: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });

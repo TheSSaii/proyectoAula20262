@@ -1,185 +1,215 @@
-# 🏟️ CanchaYa — Sistema de Reserva de Escenarios Deportivos y Bienestar
+# 🏟️ CanchaYa — Extensión Móvil de Cátedras y Actividades ACUDE (TdeA)
 
 > **Tecnológico de Antioquia (TdeA) — Institución Universitaria**  
 > **Curso:** Desarrollo Móvil | **Periodo:** 2026-2  
-> **Fase:** Primer Entregable — Parte B (Funcionalidades Base)
+> **Unidad Responsable:** Bienestar Institucional (Campus Robledo)  
+> **Sistema Base Complementado:** Portal Web Campus TdeA
 
 ---
 
-## 📌 1. Descripción del Proyecto
+## 📌 1. Identidad y Objetivo del Sistema
 
-**CanchaYa** es una aplicación móvil diseñada para la comunidad del Tecnológico de Antioquia (estudiantes, docentes y personal administrativo) del **Campus Robledo**, permitiendo consultar el catálogo de escenarios deportivos, verificar la disponibilidad de turnos en tiempo real y gestionar reservas de forma ágil, transparente y moderna.
+**CanchaYa** conserva su nombre e identidad visual dentro del Tecnológico de Antioquia, consolidándose como la **extensión móvil complementaria del portal institucional Campus TdeA**.
 
-### Alcance del Primer Entregable (Parte B):
-1. **Autenticación completa:** Registro e inicio de sesión seguro con Firebase Authentication y persistencia nativa de sesión.
-2. **Catálogo dinámico:** Listado oficial de escenarios deportivos del TdeA consultados en tiempo real desde Cloud Firestore (sin datos quemados).
-3. **Buscador y filtros:** Motor de búsqueda reactivo por texto y chips de filtrado por disciplina deportiva.
-4. **Navegación robusta:** Enrutamiento condicional (`AuthStack` vs `BottomTabs`) y flujo en Stack (`Inicio -> Detalle -> Disponibilidad`).
-5. **Base para el equipo:** Módulos y contratos desacoplados listos para que los demás desarrolladores integren disponibilidad y reservas sin acoplamiento.
-
-> [!NOTE]
-> **Aclaración de Alcance:** Conforme a las especificaciones pedagógicas del curso, el soporte **Offline-First** (caché local SQLite/WatermelonDB, sincronización en segundo plano y resolución de conflictos) está planificado y acotado para el **Segundo Entregable**, no para este primer corte.
+Mientras que la matrícula académica y la gestión oficial global de los estudiantes se centraliza en la plataforma web **Campus TdeA**, **CanchaYa** opera como la herramienta de bolsillo para la comunidad estudiantil del **Campus Robledo**, permitiendo:
+1. **Consultar el catálogo oficial de Cátedras y Talleres ACUDE** (Actividades Culturales y Deportivas) organizadas por Bienestar Institucional.
+2. **Revisar franjas horarias semanales fijas** para evitar colisiones y cruces con la carga académica matriculada en Campus TdeA.
+3. **Inscribirse de forma atómica** en los cupos oficiales disponibles por taller.
+4. **Gestionar la asistencia y el sobrecupo presencial directo en campus**: orientación operativa clara sobre el lugar exacto y el docente a cargo para solicitar sobrecupo presencial en caso de que otros estudiantes matriculados liberen sus cupos por inasistencia o deserción.
 
 ---
 
-## 🛠️ 2. Stack Tecnológico
+## ⚠️ 2. Reglas de Negocio Críticas (ACUDE TdeA)
+
+### A. Franjas Semanales Fijas (No Alquiler por Horas)
+Las cátedras ACUDE no se alquilan por turnos sueltos ni funcionan como reservas comerciales de canchas. Tienen **encuentros semanales recurrentes fijos** durante todo el semestre académico (ej. *Martes y Jueves de 14:00 a 16:00*). La visualización de la agenda semanal en la app permite contrastar de inmediato los días de práctica con el horario de materias registrado en Campus TdeA.
+
+### B. Reglamento de Asistencia y Liberación de Cupos
+Conforme al reglamento de Bienestar Institucional:
+- Se exige un **mínimo del 80% de asistencia** para acreditar horas o créditos extracurriculares.
+- Si un estudiante matriculado incurre en inasistencias reiteradas o deserta, **su curso se cancela administrativamente y el cupo queda liberado**.
+
+### C. Sobrecupo Presencial Directo con el Docente (Sin Trámites en Oficinas)
+Cuando una actividad tiene sus cupos virtuales agotados en la app o en Campus TdeA:
+- El estudiante **no tiene que hacer filas ni trámites burocráticos** en oficinas administrativas de Bienestar.
+- Simplemente consulta en CanchaYa el **cronograma, día, docente responsable y espacio físico exacto dentro del Bloque 10**.
+- Se presenta de forma presencial en la **primera sesión de clase** directamente con el profesor en el aula/escenario, solicitando autorización de sobrecupo para ocupar los cupos liberados por estudiantes ausentes o que cancelaron su matrícula.
+
+---
+
+## 🏛️ 3. Mapeo Oficial de Espacios en Campus Robledo
+
+El campus Robledo del TdeA se organiza en bloques numerados del **1 al 13**. Las Cátedras ACUDE de Bienestar Institucional tienen su epicentro en el **Bloque 10**:
+
+| Cátedra ACUDE | Categoría | Espacio Físico (Campus Robledo) | Horario Semanal Fijo | Docente a Cargo |
+|---|---|---|---|---|
+| **Fútbol Sala Formativo y Representativo** | Deportiva | Bloque 10 — Coliseo Institucional | Mar y Jue · 14:00 - 16:00 | Lic. Carlos Mario Restrepo |
+| **Danza Folclórica y Expresión Tradicional** | Cultural | Bloque 10 — Salón de Expresión Cultural | Lun y Mié · 16:00 - 18:00 | Prof. María Elena Morales |
+| **Acondicionamiento Físico y Salud** | Deportiva | Bloque 10 — Gimnasio Bienestar (Piso 2) | Lun y Mié · 08:00 - 10:00 | Lic. Andrés Felipe Henao |
+| **Voleibol Formativo Mixto** | Deportiva | Bloque 10 — Coliseo / Placa Externa | Mié y Vie · 14:00 - 16:00 | Lic. Juan David Gómez |
+| **Tenis de Mesa y Concentración** | Deportiva | Bloque 10 — Área Multideportiva (Nivel 1) | Mar y Jue · 10:00 - 12:00 | Prof. Gabriel Jaime Montoya |
+| **Teatro, Cuentería y Expresión Oral** | Cultural | Bloque 10 — Auditorio Gilberto Echeverri Mejía | Viernes · 14:00 - 18:00 | Maestra Laura Restrepo |
+
+---
+
+## 🛠️ 4. Stack Tecnológico
 
 | Capa / Herramienta | Tecnología | Versión / Detalle |
 |---|---|---|
 | **Framework Móvil** | React Native + Expo | SDK 54 (`~54.0.36`) |
-| **Persistencia en la Nube** | Cloud Firestore | SDK Modular v12 (Tree-shakeable) |
-| **Autenticación** | Firebase Auth | Email & Password con actualización de perfil |
+| **Persistencia en la Nube** | Cloud Firestore | SDK Modular v12 (Tree-shakeable, transacciones atómicas `runTransaction`) |
+| **Autenticación** | Firebase Auth | Email & Password con persistencia nativa en AsyncStorage |
 | **Persistencia Local** | AsyncStorage | `@react-native-async-storage/async-storage` (v2.2.0) |
 | **Navegación** | React Navigation | v7 (`@react-navigation/native`, `/stack`, `/bottom-tabs`) |
-| **Gestión de Estado** | React Context API | Sin Redux ni librerías pesadas externas |
-| **Diseño / Estilos** | StyleSheet Nativo | Paleta accesible con identidad TdeA, sin dependencias externas de íconos |
+| **Gestión de Estado** | React Context API | `AuthContexto` con sincronización de estado de sesión |
+| **Estilos y Diseño** | StyleSheet Nativo | Paleta semántica accesible e institucional (sin dependencias externas pesadas) |
 
 ---
 
-## 📂 3. Arquitectura del Proyecto
+## 📂 5. Arquitectura del Proyecto
 
-El repositorio adopta una arquitectura en capas limpias con nombres de carpetas en inglés y módulos/componentes en español:
+El repositorio implementa una arquitectura modular por capas desacopladas donde la interfaz de usuario nunca ejecuta consultas directas a la base de datos:
 
 ```text
-proyectoAula20262/
-├── components/                       # Componentes visuales reutilizables (UI pura)
-│   ├── Badge.js                      # Píldora de estado accesible (disponible, ocupado, mantenimiento)
-│   ├── EscenarioCard.js              # Tarjeta interactiva de escenario deportivo con fallback visual
-│   ├── DateSelector.js               # [P3 - T11]: Selector de fecha para disponibilidad
-│   └── SlotPicker.js                 # [P3 - T11]: Selector de turnos horarios libres/ocupados
+canchaYa/
+├── components/                       # Componentes visuales atómicos y moleculares
+│   ├── AcudeCard.js                  # Tarjeta de cátedra ACUDE (aforo, horario, badges, docente)
+│   ├── Badge.js                      # Píldora semántica (cupos disponibles, agotado, inscrito, categorías)
+│   ├── DateSelector.js               # Selector semanal interactivo para evitar cruces con Campus TdeA
+│   └── SlotPicker.js                 # Visualizador de franjas horarias y sesiones fijas en Bloque 10
 │
 ├── contexts/                         # Estado global reactivo
 │   └── AuthContexto.js               # Provider y hook useAuth() con onAuthStateChanged y AsyncStorage
 │
-├── navigation/                       # Enrutamiento con React Navigation v7
-│   ├── AppNavigator.js               # Enrutador condicional raíz (conmuta AuthStack <-> Tabs)
+├── navigation/                       # Enrutamiento robusto con React Navigation v7
+│   ├── AppNavigator.js               # Enrutador condicional raíz (AuthStack <-> Tabs)
 │   ├── AuthStack.js                  # Pila de autenticación: LoginScreen <-> RegistroScreen
-│   ├── NavegacionStack.js            # Pila operativa: Inicio -> Detalle -> Disponibilidad -> Confirmación
-│   └── Tabs.js                       # Barra inferior de 3 pestañas: Escenarios, Mis Reservas, Perfil
+│   ├── NavegacionStack.js            # Pila operativa: Inicio -> Detalle -> Horarios
+│   └── Tabs.js                       # Bottom Tabs: Cátedras ACUDE, Mis Inscripciones, Perfil
 │
-├── screens/                          # Vistas completas de pantalla
-│   ├── LoginScreen.js                # Acceso con inputs seguros y validaciones
-│   ├── RegistroScreen.js             # Registro con validación de correo TdeA y contraseñas
-│   ├── InicioScreen.js               # Catálogo en FlatList con buscador reactivo y chips
-│   ├── DetalleScreen.js              # Ficha técnica, aforo, normas institucionales y botón CTA
-│   ├── DisponibilidadScreen.js       # Pantalla de turnos y selección de fecha (P3 - T12)
-│   ├── MisReservasScreen.js          # Historial de reservas del estudiante (P4 - T15)
-│   └── PerfilScreen.js               # Información de cuenta, badge TdeA y cierre de sesión
+├── screens/                          # Pantallas completas del sistema
+│   ├── InicioScreen.js               # Catálogo con FlatList, chips y buscador fuera del listado
+│   ├── DetalleScreen.js              # Ficha técnica, regla del 80%, enlace a horarios y matrícula atómica
+│   ├── HorariosScreen.js             # Agenda semanal detallada y guía de sobrecupo presencial con el docente
+│   ├── MisInscripcionesScreen.js     # Gestión de cátedras matriculadas y cancelación con liberación de cupo
+│   ├── PerfilScreen.js               # Información del estudiante, sincronización y cierre de sesión
+│   ├── LoginScreen.js                # Acceso institucional con validaciones y textos seguros
+│   └── RegistroScreen.js             # Registro de cuenta estudiantil TdeA
 │
-├── services/                         # Capa de acceso a datos y lógica externa (Data Layer)
-│   ├── firebaseConfig.js             # Inicialización idempotente de Firebase (App, Auth, Firestore)
-│   ├── authService.js                # Métodos signIn, signUp, signOut y traducción de errores
-│   ├── escenariosService.js          # Consultas getEscenarios() y getEscenarioById()
-│   ├── seedEscenarios.js             # Siembra de los 5 escenarios reales del TdeA en Firestore
-│   ├── disponibilidadService.js      # [P3 - T10]: Cruce de franjas libres contra reservas
-│   └── reservasService.js            # [P4 - T13]: crearReserva() y getMisReservas()
+├── services/                         # Capa de datos desacoplada (Data Layer)
+│   ├── firebaseConfig.js             # Inicialización centralizada con variables EXPO_PUBLIC_*
+│   ├── authService.js                # Métodos de autenticación y mapeo de errores en español
+│   ├── acudesService.js              # Consultas getAcudes() y getAcudeById() a Firestore
+│   ├── disponibilidadService.js      # getHorariosAcude(): cronograma semanal y metadata operativa
+│   ├── inscripcionesService.js       # inscribirEstudiante() y cancelarInscripcion() con runTransaction
+│   └── seedAcudes.js                 # Siembra idempotente de las 6 cátedras reales del Bloque 10
 │
-├── App.js                            # Punto de entrada: Inyecta AuthProvider y NavigationContainer
+├── App.js                            # Punto de entrada con AuthProvider y NavigationContainer
 ├── package.json                      # Dependencias y scripts de Expo
-└── README.md                         # Documentación maestra del sistema
+└── README.md                         # Documentación técnica maestra
 ```
 
 ---
 
-## 🚀 4. Guía de Puesta en Marcha (Instalación y Ejecución)
+## 🗄️ 6. Modelo de Datos en Cloud Firestore
+
+### Colección: `acudes`
+Documento representativo de una Cátedra o Taller formativo:
+```json
+{
+  "id": "acude-futsal",
+  "nombre": "Fútbol Sala Formativo y Representativo",
+  "categoria": "Deportiva",
+  "disciplina": "Fútbol Sala",
+  "docente": "Lic. Carlos Mario Restrepo",
+  "ubicacion": "Campus Robledo - Bloque 10 (Coliseo Institucional)",
+  "cupoTotal": 25,
+  "cuposDisponibles": 8,
+  "estado": "disponible",
+  "descripcion": "Taller formativo de técnica individual, táctica colectiva y acondicionamiento aeróbico...",
+  "requisitos": "Carné estudiantil TdeA vigente, calzado para maderamen e hidratación.",
+  "asistenciaMinima": "80% de asistencia obligatoria. Inasistencias reiteradas liberan el cupo.",
+  "notaPresencial": "Si los cupos están agotados, preséntate en el Coliseo en la primera sesión con el docente.",
+  "horarios": [
+    { "dia": "Martes", "horaInicio": "14:00", "horaFin": "16:00", "lugar": "Bloque 10 - Coliseo Institucional" },
+    { "dia": "Jueves", "horaInicio": "14:00", "horaFin": "16:00", "lugar": "Bloque 10 - Coliseo Institucional" }
+  ],
+  "imagenUrl": "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800",
+  "actualizadoEn": "Timestamp"
+}
+```
+
+### Colección: `inscripciones`
+Documento generado mediante transacción atómica que vincula al estudiante con la cátedra:
+```json
+{
+  "id": "auto_id_firestore",
+  "idUsuario": "uid_estudiante_firebase_auth",
+  "emailUsuario": "estudiante@tdea.edu.co",
+  "nombreUsuario": "Juan Pérez",
+  "idAcude": "acude-futsal",
+  "nombreAcude": "Fútbol Sala Formativo y Representativo",
+  "categoria": "Deportiva",
+  "docente": "Lic. Carlos Mario Restrepo",
+  "ubicacion": "Campus Robledo - Bloque 10 (Coliseo Institucional)",
+  "horarios": [ ... ],
+  "estado": "activa",
+  "fechaInscripcion": "2026-09-08 22:30:00",
+  "asistenciaMinima": "80% de asistencia obligatoria"
+}
+```
+
+---
+
+## 🚀 7. Puesta en Marcha (Instalación y Ejecución)
 
 ### Requisitos previos:
 - **Node.js**: Versión LTS (v20 o superior).
 - **Dispositivo móvil**: Con la app **Expo Go** instalada (Android o iOS) o un simulador/emulador configurado.
-- **Git** instalado.
+- Variables de entorno en `.env` (guíate con `.env.example`).
 
 ### Paso a paso:
 
 ```bash
-# 1. Clonar el repositorio
-git clone git@github.com:TheSSaii/proyectoAula20262.git
-cd proyectoAula20262
-
-# 2. Instalar dependencias exactas
+# 1. Instalar dependencias del proyecto
 npm install
+
+# 2. Configurar variables de entorno
+cp .env.example .env
+# Completa tus claves de Firebase en .env
 
 # 3. Iniciar el servidor de desarrollo de Expo
 npx expo start
 ```
 
 ### Opciones de ejecución:
-- **En tu celular físico:** Escanea el código QR que aparece en la terminal usando la cámara (iOS) o la app **Expo Go** (Android).
-- **En Emulador Android:** Presiona la tecla `a` en la terminal.
-- **En Simulador iOS (Mac):** Presiona la tecla `i` en la terminal.
-- **Recargar cambios en caliente:** Presiona la tecla `r`.
+- **En tu dispositivo físico:** Escanea el código QR que genera la terminal usando Expo Go (Android) o la cámara (iOS).
+- **En Emulador Android:** Presiona la tecla `a`.
+- **En Simulador iOS:** Presiona la tecla `i`.
+- **Recarga rápida (Fast Refresh):** Presiona la tecla `r`.
 
----
-
-## 🔥 5. Configuración de Firebase y Base de Datos
-
-Las credenciales del proyecto oficial de Firebase (`canchaya-ef35d`) ya se encuentran centralizadas en `services/firebaseConfig.js`.
-
-### ¿Cómo verificar o sembrar la base de datos (Seed)?
-La colección `escenarios` ya cuenta con los 5 escenarios deportivos reales del campus Robledo:
-1. **Cancha Sintética de Fútbol 8** (Bloque Deportivo)
-2. **Coliseo Cubierto Mayor** (Bloque E)
-3. **Gimnasio de Acondicionamiento Físico** (Piso 2 Bienestar)
-4. **Placa Polideportiva Descubierta** (Zona Canchas Externas)
-5. **Sala de Tenis de Mesa y Deportes de Mesa** (Bloque Deportivo, Nivel 1)
-
-> **Garantía de Idempotencia:** El script `services/seedEscenarios.js` utiliza `setDoc` con `{ merge: true }` e IDs fijos. Si la base de datos se limpia o se reconfigura, ejecutar el seed actualizará los registros sin duplicar documentos.
-
----
-
-## 👥 6. Matriz de Responsabilidades del Equipo (Sprint 1)
-
-| Tarea | Rol Asignado | Descripción | Estado |
-|---|---|---|:---:|
-| **T01** | Prog 1 | Setup Firebase SDK modular + persistencia nativa con AsyncStorage | ✅ Completado |
-| **T03** | Prog 1 | Capa de negocio: `authService.js` y `contexts/AuthContexto.js` | ✅ Completado |
-| **T04** | Prog 1 | Pantallas `LoginScreen.js` y `RegistroScreen.js` validadas | ✅ Completado |
-| **T17** | Prog 1 | Reglas de seguridad en Firestore (`firestore.rules`) y perfil | ⏳ En desarrollo |
-| **T07** | Prog 2 | Componentes UI: `Badge.js` y `EscenarioCard.js` dinámicos | ✅ Completado |
-| **T02** | Prog 2 | Seed de datos reales del TdeA en Cloud Firestore | ✅ Completado |
-| **T06** | Prog 2 | Capa de servicios: `escenariosService.js` (`getEscenarios`, `getById`) | ✅ Completado |
-| **T05** | Prog 2 | Navegación global (`AuthStack`, `Tabs`, `NavegacionStack`) en `App.js` | ✅ Completado |
-| **T08** | Prog 2 | `InicioScreen.js`: Catálogo interactivo con buscador y filtros | ✅ Completado |
-| **T09** | Prog 2 | `DetalleScreen.js`: Ficha técnica, aforo, normas y botón CTA | ✅ Completado |
-| **T11** | Prog 3 | Componentes `DateSelector.js` y `SlotPicker.js` | ⏳ Asignado |
-| **T10** | Prog 3 | Servicio `consultarDisponibilidad(escenarioId, fecha)` | ⏳ Asignado |
-| **T12** | Prog 3 | Pantalla `DisponibilidadScreen.js` interactiva con franjas | ⏳ Asignado |
-| **T13** | Prog 4 | Servicio transaccional `crearReserva()` en Firestore | ⏳ Asignado |
-| **T14** | Prog 4 | Pantalla de confirmación y voucher `ConfirmacionReservaScreen.js` | ⏳ Asignado |
-| **T15** | Prog 4 | Pantalla de gestión de turnos `MisReservasScreen.js` | ⏳ Asignado |
-| **T16/18**| Prog 4 | Documentación técnica final, matriz de pruebas E2E y video | ⏳ Asignado |
-
----
-
-## 🎯 7. Metodología de Trabajo y Commits
-
-El equipo opera bajo ciclos cerrados de desarrollo guiados por un **Definition of Done (DoD)** estricto por tarea:
-
-$$\text{Tarea individual} \longrightarrow \text{Código modular documentado} \longrightarrow \text{Verificación manual DoD} \longrightarrow \text{Commit estandarizado}$$
-
-### Estándar de Commits (Conventional Commits):
-- `feat(T01): setup inicial de Firebase SDK modular con persistencia en AsyncStorage`
-- `feat(T02): seed de datos reales de escenarios en Firestore`
-- `feat(T03): contexto global de autenticacion y servicio con Firebase Auth`
-- `feat(T04): pantallas LoginScreen y RegistroScreen con validaciones e inputs seguros`
-- `feat(T05): navegacion global con AuthStack, NavegacionStack y Tabs en App.js`
-- `feat(T06): servicio de consulta de escenarios con Firestore SDK`
-- `feat(T07): componentes EscenarioCard y Badges con datos dinámicos`
-- `feat(T08-T09): catalogo interactivo con buscador y filtros, y detalle de escenario`
+### Siembra inicial de datos (Seed):
+Si ejecutas la app por primera vez con una base de datos vacía, en la pantalla principal (`InicioScreen`) o en `PerfilScreen` encontrarás el botón:
+> **🌱 Cargar Cátedras ACUDE TdeA (Seed)**  
+Al pulsarlo, se insertarán automáticamente las 6 cátedras reales del campus Robledo con sus horarios, docentes y espacios del Bloque 10 de forma 100% idempotente (`setDoc` con `{ merge: true }`).
 
 ---
 
 ## 🎓 8. Guía para la Sustentación Oral Individual
 
-Respuestas técnicas clave a preguntas frecuentes de evaluación:
+Respuestas técnicas y de arquitectura para responder a preguntas de evaluación:
 
-1. **¿Por qué la arquitectura es desacoplada y modular?**  
-   Las pantallas (`screens`) nunca consumen directamente el SDK de Firestore ni ejecutan queries inline; delegan la responsabilidad a la capa de servicios (`services/escenariosService.js`). Esto respeta el principio de responsabilidad única (SRP) y facilita pruebas o cambios de proveedor de base de datos sin tocar la interfaz gráfica.
+1. **¿Por qué CanchaYa no reemplaza a Campus TdeA y cómo interactúan?**  
+   *Campus TdeA* es la plataforma web institucional rectora de la vida académica del estudiante (matrícula oficial, notas, créditos). *CanchaYa* actúa como una **extensión móvil especializada para Bienestar Universitario**, enfocada en la consulta ágil de horarios, prevención de cruces académicos, inscripción a cátedras ACUDE y la gestión presencial de sobrecupos directamente en el campus Robledo.
 
-2. **¿Cómo se garantiza que la sesión de usuario no se pierda al reiniciar la app?**  
-   Al configurar Firebase Auth en `services/firebaseConfig.js`, se utilizó `initializeAuth` con `getReactNativePersistence(AsyncStorage)`. Esto asegura que los tokens de sesión se almacenen de forma segura y persistente en el dispositivo móvil, permitiendo a `onAuthStateChanged` rehidratar el usuario al iniciar la app.
+2. **¿Cómo se resuelven las concurrencias y la integridad de cupos al inscribirse?**  
+   En `services/inscripcionesService.js`, la función `inscribirEstudiante` utiliza `runTransaction` de Cloud Firestore. Esta operación atómica lee el documento del taller, verifica que `cuposDisponibles > 0` y que el estudiante no esté matriculado previamente. En un único commit indivisible, reduce el contador de cupos y crea el documento de inscripción. Si dos estudiantes intentan tomar el último cupo simultáneamente, Firestore detecta la colisión y sólo aprueba una transacción, evitando cualquier sobrecupo virtual duplicado.
 
-3. **¿Cómo se resuelve el enrutamiento condicional seguro?**  
-   En `navigation/AppNavigator.js`, la aplicación evalúa el valor reactivo `user` expuesto por el hook `useAuth()`. Si `user` es nulo, React Navigation monta exclusivamente `AuthStack`; una vez autenticado, desmonta las rutas de acceso y monta `Tabs`. Es imposible para un usuario acceder al catálogo o reservar sin haberse autenticado.
+3. **¿Cómo se garantiza que al cancelar se libere el cupo para otro estudiante?**  
+   La función `cancelarInscripcion` ejecuta igualmente una transacción: conmuta el estado de la inscripción a `'cancelada'` y a su vez incrementa `cuposDisponibles + 1` en la cátedra correspondiente. Si la cátedra estaba en estado `'agotado'`, se actualiza automáticamente a `'disponible'`, permitiendo que otro estudiante pueda inscribirse de inmediato desde la app o que un asistente presencial aproveche esa vacante con el docente.
 
-4. **¿Por qué la búsqueda y los chips no cierran el teclado al escribir?**  
-   Se mantuvo el contenedor de búsqueda y filtros en una vista estática fija **fuera del `FlatList`**. Si el `TextInput` estuviese dentro de `ListHeaderComponent`, cada cambio de estado en React recrearía la cabecera, provocando la pérdida de foco (`blur`) del input y el cierre automático del teclado.
+4. **¿Por qué la consulta de cronograma semanal es vital si no es una app de alquiler de canchas?**  
+   Porque las cátedras ACUDE se reúnen en franjas recurrentes fijas. El estudiante necesita contrastar esos días y horas contra su horario matriculado en Campus TdeA para evitar inasistencias que le hagan perder el curso (regla del 80%). Además, si no logró cupo en la plataforma virtual, el cronograma le indica el momento exacto y el aula del Bloque 10 donde debe presentarse físicamente con el profesor a solicitar sobrecupo presencial.
+
+5. **¿Cómo se evita que el buscador cierre el teclado al escribir?**  
+   El `TextInput` y los chips de categoría se mantienen en una vista fija **fuera del `FlatList`** en `screens/InicioScreen.js`. Si se renderizara dentro de `ListHeaderComponent`, cada actualización del estado `busqueda` desmontaría y recrearía el encabezado de la lista, lo que provocaría la pérdida inmediata del foco (`blur`) del teclado en dispositivos móviles.

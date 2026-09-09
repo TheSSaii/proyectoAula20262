@@ -1,10 +1,10 @@
 /**
  * @file Tabs.js
- * @description Navegación inferior persistente (Bottom Tabs) para usuarios autenticados.
- * Integra las 3 áreas maestras de la aplicación:
- * - Escenarios (Catálogo y reserva vía NavegacionStack)
- * - Mis Reservas (Historial de turnos - Prog 4)
- * - Perfil (Cuenta de usuario y cierre de sesión)
+ * @description Navegación inferior persistente (Bottom Tabs) para usuarios autenticados en CanchaYa.
+ * Conecta las 3 áreas maestras del sistema:
+ * - Cátedras ACUDE (Catálogo y ficha vía NavegacionStack)
+ * - Mis Inscripciones (Mis talleres matriculados y liberación de cupo)
+ * - Perfil (Cuenta de usuario, datos institucionales y cierre de sesión)
  * @module navigation/Tabs
  */
 
@@ -12,7 +12,7 @@ import React from 'react';
 import { Text, Platform, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import NavegacionStack from './NavegacionStack';
-import MisReservasScreen from '../screens/MisReservasScreen';
+import MisInscripcionesScreen from '../screens/MisInscripcionesScreen';
 import PerfilScreen from '../screens/PerfilScreen';
 
 const Tab = createBottomTabNavigator();
@@ -20,7 +20,7 @@ const Tab = createBottomTabNavigator();
 export default function Tabs() {
   return (
     <Tab.Navigator
-      initialRouteName="EscenariosTab"
+      initialRouteName="InicioTab"
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarActiveTintColor: '#0284C7',
@@ -38,29 +38,29 @@ export default function Tabs() {
           fontWeight: '600',
         },
         tabBarIcon: ({ focused }) => {
-          let icono = '🏟️';
-          if (route.name === 'EscenariosTab') icono = focused ? '🏟️' : '⚽';
-          if (route.name === 'MisReservasTab') icono = '📅';
-          if (route.name === 'PerfilTab') icono = '👤';
+          let icono = '🎨';
+          if (route.name === 'InicioTab') icono = focused ? '🎨' : '🏃';
+          if (route.name === 'MisInscripcionesTab') icono = focused ? '📋' : '📑';
+          if (route.name === 'PerfilTab') icono = focused ? '👤' : '👥';
 
           return <Text style={styles.iconoTab}>{icono}</Text>;
         },
       })}
     >
       <Tab.Screen
-        name="EscenariosTab"
+        name="InicioTab"
         component={NavegacionStack}
         options={{
-          tabBarLabel: 'Escenarios',
+          tabBarLabel: 'Cátedras ACUDE',
         }}
       />
       <Tab.Screen
-        name="MisReservasTab"
-        component={MisReservasScreen}
+        name="MisInscripcionesTab"
+        component={MisInscripcionesScreen}
         options={{
-          tabBarLabel: 'Mis Reservas',
+          tabBarLabel: 'Mis Cátedras',
           headerShown: true,
-          headerTitle: '📅 Mis Reservas',
+          headerTitle: '📋 Mis Inscripciones ACUDE',
           headerStyle: {
             backgroundColor: '#FFFFFF',
             elevation: 0,
@@ -80,7 +80,7 @@ export default function Tabs() {
         options={{
           tabBarLabel: 'Perfil',
           headerShown: true,
-          headerTitle: '👤 Mi Perfil',
+          headerTitle: '👤 Mi Perfil TdeA',
           headerStyle: {
             backgroundColor: '#FFFFFF',
             elevation: 0,

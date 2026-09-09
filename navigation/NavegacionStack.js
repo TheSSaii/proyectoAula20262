@@ -1,21 +1,20 @@
 /**
  * @file NavegacionStack.js
- * @description Pila de navegación principal (Stack) para el flujo de reserva de escenarios.
- * Conecta: Inicio (Catálogo) -> Detalle -> Disponibilidad (Prog 3) -> Confirmación (Prog 4).
+ * @description Pila de navegación principal (Stack) para el flujo operativo de Cátedras ACUDE.
+ * Conecta: Inicio (Catálogo) -> Detalle (Ficha técnica e inscripción) -> Horarios (Agenda semanal y sobrecupo).
  * @module navigation/NavegacionStack
  */
 
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
-import ConfirmacionReservaScreen from '../screens/ConfirmacionReservaScreen';
 import InicioScreen from '../screens/InicioScreen';
 import DetalleScreen from '../screens/DetalleScreen';
-import DisponibilidadScreen from '../screens/DisponibilidadScreen';
+import HorariosScreen from '../screens/HorariosScreen';
 
 const Stack = createStackNavigator();
 
 /**
- * Pila de navegación del catálogo y reserva de escenarios.
+ * Pila de navegación de Cátedras ACUDE.
  * @returns {React.JSX.Element}
  */
 export default function NavegacionStack() {
@@ -43,26 +42,22 @@ export default function NavegacionStack() {
         name="Inicio"
         component={InicioScreen}
         options={{
-          title: '🏟️ CanchaYa TdeA',
+          title: '🏟️ CanchaYa · Cátedras ACUDE',
         }}
       />
       <Stack.Screen
         name="Detalle"
         component={DetalleScreen}
         options={({ route }) => ({
-          title: route.params?.escenario?.nombre || 'Detalle del Escenario',
+          title: route.params?.acude?.nombre || 'Detalle de la Cátedra',
         })}
       />
       <Stack.Screen
-        name="Disponibilidad"
-        component={DisponibilidadScreen}
+        name="Horarios"
+        component={HorariosScreen}
         options={{
-          title: '📅 Disponibilidad de Franjas',
+          title: '📅 Cronograma y Sobrecupo',
         }}
-      />
-      <Stack.Screen name="ConfirmacionReserva" 
-      component={ConfirmacionReservaScreen} 
-
       />
     </Stack.Navigator>
   );
