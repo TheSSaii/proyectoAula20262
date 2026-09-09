@@ -11,15 +11,15 @@ import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Credenciales oficiales del proyecto Firebase CanchaYa (TdeA)
+// Credenciales del proyecto Firebase CanchaYa (compatibles con EXPO_PUBLIC_* y fallback)
 const firebaseConfig = {
-  apiKey: "AIzaSyBsCwccJMcPHpYzUwCg8PA76VgHWCcFbKA",
-  authDomain: "canchaya-ef35d.firebaseapp.com",
-  projectId: "canchaya-ef35d",
-  storageBucket: "canchaya-ef35d.firebasestorage.app",
-  messagingSenderId: "915281497132",
-  appId: "1:915281497132:web:77848c292b3c58a4e91589",
-  measurementId: "G-9C6Q32QZM7",
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || "AIzaSyBsCwccJMcPHpYzUwCg8PA76VgHWCcFbKA",
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || "canchaya-ef35d.firebaseapp.com",
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || "canchaya-ef35d",
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || "canchaya-ef35d.firebasestorage.app",
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "915281497132",
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || "1:915281497132:web:77848c292b3c58a4e91589",
+  measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID || "G-9C6Q32QZM7",
 };
 
 // 1. Inicialización idempotente de Firebase App para evitar duplicaciones en recargas de desarrollo
