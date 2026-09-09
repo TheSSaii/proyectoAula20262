@@ -195,6 +195,10 @@ Al pulsarlo, se insertarán automáticamente las 6 cátedras reales del campus R
 
 ---
 
+
+## ERRORES:
+ 1. **Error al liberar cupos**
+
 ## 🎓 8. Guía para la Sustentación Oral Individual
 
 Respuestas técnicas y de arquitectura para responder a preguntas de evaluación:
