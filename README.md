@@ -253,14 +253,3 @@ A continuación se documentan los errores reportados durante las pruebas de usua
 *   **Botón "Sincronizar Catálogo ACUDE (Bloque 10)":**
     *   **Descripción:** El comportamiento de este botón en el perfil del usuario no es claro. 
     *   **Acción Requerida:** Documentar qué hace exactamente este proceso por debajo (¿Actualiza la base de datos local? ¿Hace un fetch a Firestore?) para entender cómo se evidencia esta acción a nivel de base de datos.
-
-    ## ERRORES HALLADOS TRAS EL TESTING MANUAL SIMON :
- 1. **Error al liberar cupos de un acude: (Firestore transactions require all reads to be executed before all writes)**
-
- 2. **Los acude solo tienen 2 dias y 1 horario a la semana, Esta bien pero en la vida real cada actividad cuenta con mas de 1 horario y mas de 2 dias diferentes de clase**
-
- 3. **La barra de busqueda en catedras no encuentra resultados con texto que no sean 100% iguales al titulo del acude en BD**
-
-4. **los valores de aforos y cupos bien simulados pero seria mas asertivo usar valores reales (al momento de reinicializar bd de estudiantes inscritos desde 0)**
-
-5. **(IMPLEMENTACION FUTURA ) agregar opcion de recuperacion de contraseña**
