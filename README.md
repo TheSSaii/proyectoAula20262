@@ -217,3 +217,43 @@ Respuestas técnicas y de arquitectura para responder a preguntas de evaluación
 
 5. **¿Cómo se evita que el buscador cierre el teclado al escribir?**  
    El `TextInput` y los chips de categoría se mantienen en una vista fija **fuera del `FlatList`** en `screens/InicioScreen.js`. Si se renderizara dentro de `ListHeaderComponent`, cada actualización del estado `busqueda` desmontaría y recrearía el encabezado de la lista, lo que provocaría la pérdida inmediata del foco (`blur`) del teclado en dispositivos móviles.
+
+## 🐛 Registro de Errores y Mejoras Pendientes (Bug Tracking)
+
+A continuación se documentan los errores reportados durante las pruebas de usuario (QA) extraídos de la revisión en video. Estos problemas deben solucionarse para garantizar la estabilidad de la aplicación y una correcta experiencia de usuario.
+
+### 🚨 1. Errores Críticos y de Base de Datos (Firebase)
+*   **Crash por Transacción al Cancelar Inscripción:**
+    *   **Descripción:** Al intentar liberar un cupo (cancelar inscripción), la aplicación arroja un error en la consola de Firebase: `Firestore transactions require all reads to be executed before all writes`.
+    *   **Solución Esperada:** Refactorizar el código de la transacción para asegurar que todas las operaciones de lectura se ejecuten antes de cualquier operación de escritura.
+*   **Gestión y Seguridad de Usuarios en Firestore:**
+    *   **Descripción:** Es obligatorio que la gestión de identidades sea segura. 
+    *   **Solución Esperada:** Asegurar que los usuarios registrados se visualicen correctamente en la colección correspondiente de la base de datos en Firestore, y garantizar que **las contraseñas estén obligatoriamente encriptadas**.
+
+### ⚙️ 2. Errores de Lógica de Negocio y Flujo de Inscripción
+*   **Desacople en la Selección del Día/Horario:**
+    *   **Descripción:** Al ingresar a la ficha de horarios de una cátedra, el sistema pide confirmar la inscripción, pero no permite al usuario elegir a qué horario específico desea matricularse.
+    *   **Impacto:** Si un usuario selecciona un horario específico en el cronograma (por ejemplo, el Miércoles) y se inscribe, el sistema ignora su elección y lo inscribe automáticamente en el primer horario disponible (ej. Lunes).
+    *   **Solución Esperada:** El payload de la inscripción debe capturar y enviar el ID del día y la franja horaria que el usuario realmente seleccionó.
+*   **Incapacidad de Inscripción en Días Específicos:**
+    *   **Descripción:** Al intentar hacer tap sobre ciertos días (como el Viernes en algunas cátedras), la interfaz no responde ni permite avanzar con el proceso de matrícula.
+
+### 🔍 3. Errores en Filtros y Búsqueda
+*   **Buscador Sensible a Tildes (Diacríticos):**
+    *   **Descripción:** Si un usuario busca el término "Futbol" (sin tilde), el buscador arroja 0 resultados. Solo funciona si se busca "Fútbol" (con tilde).
+    *   **Solución Esperada:** Implementar una normalización de texto en la función de búsqueda para que ignore las tildes y mejore la usabilidad.
+*   **Clasificación Errónea en Filtros de Categorías:**
+    *   **Descripción:** Al presionar el filtro de actividades "Culturales", la cátedra de "Danza Folclórica" no aparece en la lista, a pesar de tener la etiqueta visual de "Cultural". Sin embargo, otras cátedras como "Teatro" sí aparecen correctamente.
+    *   **Solución Esperada:** Revisar la metadata o el tag asignado a "Danza Folclórica" en la base de datos para que el filtro lo reconozca.
+
+### 📱 4. UI/UX (Interfaz y Experiencia de Usuario)
+*   **Problemas con el Hitbox (Área Táctil) en la Navegación Inferior:**
+    *   **Descripción:** En algunos dispositivos móviles, el área táctil de los iconos del menú de navegación inferior está desfasada. El usuario tiene que presionar fuera del icono para que el botón funcione.
+    *   **Solución Esperada:** Ajustar el padding/margin y el área del componente `Pressable` o `Touchable` en el `BottomTabNavigator`.
+*   **Botón de Ficha de Inscripción Inactivo:**
+    *   **Descripción:** En la vista principal del cronograma, el componente visual que debería funcionar como ficha de inscripción no ejecuta ninguna acción al ser presionado.
+
+### ❓ 5. Dudas de Arquitectura por Aclarar
+*   **Botón "Sincronizar Catálogo ACUDE (Bloque 10)":**
+    *   **Descripción:** El comportamiento de este botón en el perfil del usuario no es claro. 
+    *   **Acción Requerida:** Documentar qué hace exactamente este proceso por debajo (¿Actualiza la base de datos local? ¿Hace un fetch a Firestore?) para entender cómo se evidencia esta acción a nivel de base de datos.
