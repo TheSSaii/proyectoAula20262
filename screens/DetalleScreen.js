@@ -1,9 +1,10 @@
 /**
  * @file DetalleScreen.js
  * @description Ficha técnica completa de una Cátedra o Actividad ACUDE (Bienestar Institucional TdeA).
- * Muestra: información formativa, docente, aforo en Bloque 10, regla del 80% de asistencia mínima,
- * botón para consultar el cronograma semanal en HorariosScreen y acción de matrícula con
- * runTransaction de Firestore.
+ * Presenta información formativa, aforo, regla del 80% de asistencia mínima,
+ * enlace al cronograma semanal y matrícula atómica con runTransaction de Firestore.
+ * Diseñado con la paleta de identidad oficial TdeA (Verde Pino, Verde Lima, Gris Neutro y Negro Institucional)
+ * e iconografía vectorial profesional de Ionicons.
  * @module screens/DetalleScreen
  */
 
@@ -19,6 +20,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import Badge from '../components/Badge';
 import { useAuth } from '../contexts/AuthContexto';
 import {
@@ -26,6 +28,7 @@ import {
   verificarInscripcionPrevia,
 } from '../services/inscripcionesService';
 import { getAcudeById } from '../services/acudesService';
+import { COLORES, SOMBRAS } from '../constants/theme';
 
 export default function DetalleScreen({ route, navigation }) {
   const { acude: acudeParam } = route.params || {};
@@ -37,7 +40,6 @@ export default function DetalleScreen({ route, navigation }) {
   const [verificandoInscripcion, setVerificandoInscripcion] = useState(true);
   const [inscribiendo, setInscribiendo] = useState(false);
 
-  // Consulta el estado de inscripción previo del estudiante
   const revisarInscripcion = useCallback(async () => {
     if (!acude?.id || !user?.uid) {
       setVerificandoInscripcion(false);
@@ -48,7 +50,6 @@ export default function DetalleScreen({ route, navigation }) {
       const inscripcion = await verificarInscripcionPrevia(acude.id, user.uid);
       setEstaInscrito(Boolean(inscripcion));
 
-      // Actualizar datos del acude en segundo plano para tener el cupo más reciente
       const acudeActualizado = await getAcudeById(acude.id);
       if (acudeActualizado) {
         setAcude(acudeActualizado);
@@ -93,7 +94,6 @@ export default function DetalleScreen({ route, navigation }) {
     cuposDisponibles = 0,
     descripcion = 'Sin descripción formativa disponible.',
     requisitos = 'Carné institucional TdeA y vestimenta deportiva adecuada.',
-    asistenciaMinima = '80% de asistencia obligatoria.',
     imagenUrl,
   } = acude;
 
@@ -127,7 +127,7 @@ export default function DetalleScreen({ route, navigation }) {
 
     Alert.alert(
       'Confirmar Inscripción',
-      `¿Deseas inscribirte a "${nombre}"?\n\nDocente: ${docente}\nLugar: ${ubicacion}\n\n⚠️ Recuerda: Se requiere el 80% de asistencia mínima para acreditar el taller. Inasistencias reiteradas liberan el cupo para otro estudiante.`,
+      `¿Deseas inscribirte a "${nombre}"?\n\nDocente: ${docente}\nLugar: ${ubicacion}\n\nNota: Se requiere el 80% de asistencia mínima para acreditar el taller. Inasistencias reiteradas liberan el cupo para otro estudiante.`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -141,7 +141,6 @@ export default function DetalleScreen({ route, navigation }) {
               });
 
               setEstaInscrito(true);
-              // Decrementar cupo en la vista local
               setAcude((prev) => ({
                 ...prev,
                 cuposDisponibles: Math.max(0, prev.cuposDisponibles - 1),
@@ -172,7 +171,7 @@ export default function DetalleScreen({ route, navigation }) {
   return (
     <SafeAreaView style={styles.contenedor}>
       <ScrollView contentContainerStyle={styles.scroll}>
-        {/* Fotografía cabecera con badges superpuestos */}
+        {/* Fotografía cabecera */}
         <View style={styles.contenedorImagen}>
           {tieneImagenValida ? (
             <Image
@@ -183,9 +182,13 @@ export default function DetalleScreen({ route, navigation }) {
             />
           ) : (
             <View style={styles.placeholder}>
-              <Text style={styles.placeholderIcono}>
-                {categoria === 'Cultural' ? '🎭' : '⚽'}
-              </Text>
+              <View style={styles.circuloIconoPlaceholder}>
+                <Ionicons
+                  name={categoria === 'Cultural' ? 'color-palette-outline' : 'trophy-outline'}
+                  size={42}
+                  color={COLORES.verdePino}
+                />
+              </View>
               <Text style={styles.placeholderTexto}>{disciplina}</Text>
             </View>
           )}
@@ -223,7 +226,7 @@ export default function DetalleScreen({ route, navigation }) {
           {/* Tarjeta de Especificaciones (Docente, Ubicación, Aforo) */}
           <View style={styles.tarjetaFicha}>
             <View style={styles.filaFicha}>
-              <Text style={styles.iconoFicha}>👨‍🏫</Text>
+              <Ionicons name="person-outline" size={20} color={COLORES.verdePino} style={styles.iconoFicha} />
               <View style={styles.infoFicha}>
                 <Text style={styles.labelFicha}>Docente / Instructor</Text>
                 <Text style={styles.valorFicha}>{docente}</Text>
@@ -233,7 +236,7 @@ export default function DetalleScreen({ route, navigation }) {
             <View style={styles.divisor} />
 
             <View style={styles.filaFicha}>
-              <Text style={styles.iconoFicha}>📍</Text>
+              <Ionicons name="location-outline" size={20} color={COLORES.grisNeutro} style={styles.iconoFicha} />
               <View style={styles.infoFicha}>
                 <Text style={styles.labelFicha}>Lugar en Campus Robledo</Text>
                 <Text style={styles.valorFicha}>{ubicacion}</Text>
@@ -243,7 +246,7 @@ export default function DetalleScreen({ route, navigation }) {
             <View style={styles.divisor} />
 
             <View style={styles.filaFicha}>
-              <Text style={styles.iconoFicha}>👥</Text>
+              <Ionicons name="people-outline" size={20} color={COLORES.verdePino} style={styles.iconoFicha} />
               <View style={styles.infoFicha}>
                 <Text style={styles.labelFicha}>Aforo Institucional</Text>
                 <Text style={styles.valorFicha}>
@@ -257,10 +260,10 @@ export default function DetalleScreen({ route, navigation }) {
           <TouchableOpacity
             style={styles.botonHorarios}
             onPress={handleIrAHorarios}
-            activeOpacity={0.8}
+            activeOpacity={0.85}
           >
             <View style={styles.filaBotonHorarios}>
-              <Text style={styles.iconoBotonHorarios}>📅</Text>
+              <Ionicons name="calendar-outline" size={24} color={COLORES.verdePino} style={styles.iconoBotonHorarios} />
               <View style={styles.infoBotonHorarios}>
                 <Text style={styles.tituloBotonHorarios}>
                   Ver Cronograma Semanal y Sobrecupo
@@ -269,7 +272,7 @@ export default function DetalleScreen({ route, navigation }) {
                   Consulta franjas fijas para evitar cruces con Campus TdeA
                 </Text>
               </View>
-              <Text style={styles.flechaBotonHorarios}>→</Text>
+              <Ionicons name="chevron-forward" size={18} color={COLORES.verdePino} />
             </View>
           </TouchableOpacity>
 
@@ -298,22 +301,25 @@ export default function DetalleScreen({ route, navigation }) {
           {/* Botón CTA de Acción */}
           {verificandoInscripcion ? (
             <View style={styles.contenedorCargaBoton}>
-              <ActivityIndicator size="small" color="#0284C7" />
+              <ActivityIndicator size="small" color={COLORES.verdePino} />
               <Text style={styles.textoCargandoBoton}>
                 Comprobando estado de matrícula...
               </Text>
             </View>
           ) : estaInscrito ? (
             <View style={styles.cajaYaInscrito}>
-              <Text style={styles.textoYaInscrito}>
-                ✅ Ya te encuentras formalmente inscrito en esta cátedra
-              </Text>
+              <View style={styles.filaYaInscrito}>
+                <Ionicons name="checkmark-circle" size={20} color={COLORES.verdePino} style={{ marginRight: 8 }} />
+                <Text style={styles.textoYaInscrito}>
+                  Ya te encuentras formalmente inscrito en esta cátedra
+                </Text>
+              </View>
               <TouchableOpacity
                 style={styles.botonVerMisInscripciones}
                 onPress={() => navigation.navigate('MisInscripcionesTab')}
               >
                 <Text style={styles.textoBotonVerMisInscripciones}>
-                  Ir a Mis Inscripciones →
+                  Ir a Mis Cátedras →
                 </Text>
               </TouchableOpacity>
             </View>
@@ -330,9 +336,12 @@ export default function DetalleScreen({ route, navigation }) {
               {inscribiendo ? (
                 <ActivityIndicator color="#FFFFFF" size="small" />
               ) : (
-                <Text style={styles.textoBotonInscribirme}>
-                  📝 Inscribirme en esta Cátedra
-                </Text>
+                <View style={styles.filaBotonTexto}>
+                  <Ionicons name="create-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+                  <Text style={styles.textoBotonInscribirme}>
+                    Inscribirme en esta Cátedra
+                  </Text>
+                </View>
               )}
             </TouchableOpacity>
           ) : (
@@ -341,9 +350,12 @@ export default function DetalleScreen({ route, navigation }) {
               onPress={handleIrAHorarios}
               activeOpacity={0.85}
             >
-              <Text style={styles.textoBotonSobrecupo}>
-                ⚠️ Cupo Oficial Lleno — Ver Lugar para Sobrecupo Presencial
-              </Text>
+              <View style={styles.filaBotonTexto}>
+                <Ionicons name="information-circle-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+                <Text style={styles.textoBotonSobrecupo}>
+                  Cupo Oficial Lleno · Ver Sobrecupo Presencial
+                </Text>
+              </View>
             </TouchableOpacity>
           )}
         </View>
@@ -355,7 +367,7 @@ export default function DetalleScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   contenedor: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: COLORES.fondo,
   },
   scroll: {
     paddingBottom: 40,
@@ -363,7 +375,7 @@ const styles = StyleSheet.create({
   contenedorImagen: {
     width: '100%',
     height: 240,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: COLORES.superficieGris,
     position: 'relative',
   },
   imagen: {
@@ -375,16 +387,23 @@ const styles = StyleSheet.create({
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#E0F2FE',
+    backgroundColor: '#EAF5EF',
   },
-  placeholderIcono: {
-    fontSize: 54,
+  circuloIconoPlaceholder: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#CBE58B',
   },
   placeholderTexto: {
     marginTop: 8,
     fontSize: 14,
     fontWeight: '700',
-    color: '#0369A1',
+    color: COLORES.verdePino,
   },
   badgeFlotanteIzquierda: {
     position: 'absolute',
@@ -402,36 +421,31 @@ const styles = StyleSheet.create({
   subtituloCategoria: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#0284C7',
+    color: COLORES.verdePino,
     letterSpacing: 0.5,
     marginBottom: 6,
   },
   titulo: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#0F172A',
+    color: COLORES.negroInstitucional,
     marginBottom: 16,
     lineHeight: 30,
   },
   tarjetaFicha: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORES.superficie,
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: COLORES.borde,
     marginBottom: 16,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
+    ...SOMBRAS.suave,
   },
   filaFicha: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   iconoFicha: {
-    fontSize: 22,
     marginRight: 12,
   },
   infoFicha: {
@@ -439,26 +453,26 @@ const styles = StyleSheet.create({
   },
   labelFicha: {
     fontSize: 11,
-    color: '#64748B',
+    color: COLORES.grisNeutro,
     textTransform: 'uppercase',
     fontWeight: '600',
   },
   valorFicha: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#0F172A',
+    color: COLORES.negroInstitucional,
     marginTop: 1,
   },
   divisor: {
     height: 1,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: COLORES.borde,
     marginVertical: 12,
   },
   botonHorarios: {
-    backgroundColor: '#F0F9FF',
+    backgroundColor: COLORES.acentoClaro,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#BAE6FD',
+    borderColor: '#CBE58B',
     padding: 14,
     marginBottom: 20,
   },
@@ -467,7 +481,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   iconoBotonHorarios: {
-    fontSize: 26,
     marginRight: 12,
   },
   infoBotonHorarios: {
@@ -476,49 +489,44 @@ const styles = StyleSheet.create({
   tituloBotonHorarios: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#0369A1',
+    color: COLORES.verdePino,
   },
   subtituloBotonHorarios: {
     fontSize: 12,
-    color: '#0284C7',
+    color: '#4F6C0C',
     marginTop: 2,
-  },
-  flechaBotonHorarios: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#0284C7',
-    marginLeft: 8,
   },
   seccionTitulo: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1E293B',
+    color: COLORES.negroInstitucional,
     marginTop: 8,
     marginBottom: 8,
   },
   seccionContenido: {
     fontSize: 14,
-    color: '#475569',
+    color: COLORES.grisNeutro,
     lineHeight: 22,
     marginBottom: 16,
   },
   cajaAsistencia: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: COLORES.superficie,
     borderRadius: 12,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: COLORES.borde,
     marginBottom: 24,
+    ...SOMBRAS.suave,
   },
   itemAsistencia: {
     fontSize: 13,
-    color: '#334155',
+    color: COLORES.grisNeutro,
     lineHeight: 20,
     marginBottom: 8,
   },
   textoDestacado: {
     fontWeight: '700',
-    color: '#0F172A',
+    color: COLORES.negroInstitucional,
   },
   contenedorCargaBoton: {
     paddingVertical: 16,
@@ -527,23 +535,27 @@ const styles = StyleSheet.create({
   },
   textoCargandoBoton: {
     fontSize: 13,
-    color: '#64748B',
+    color: COLORES.grisNeutro,
     marginTop: 6,
   },
   cajaYaInscrito: {
-    backgroundColor: '#F0FDF4',
+    backgroundColor: COLORES.exitoFondo,
     borderWidth: 1,
-    borderColor: '#BBF7D0',
+    borderColor: '#B8DECA',
     borderRadius: 14,
     padding: 16,
     alignItems: 'center',
   },
-  textoYaInscrito: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#15803D',
-    textAlign: 'center',
+  filaYaInscrito: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 8,
+  },
+  textoYaInscrito: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORES.verdePino,
+    flex: 1,
   },
   botonVerMisInscripciones: {
     paddingVertical: 6,
@@ -552,32 +564,32 @@ const styles = StyleSheet.create({
   textoBotonVerMisInscripciones: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#0284C7',
+    color: COLORES.verdePino,
   },
   botonInscribirme: {
-    backgroundColor: '#0284C7',
+    backgroundColor: COLORES.verdePino,
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: 'center',
-    shadowColor: '#0284C7',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 3,
+    ...SOMBRAS.boton,
   },
   botonSobrecupo: {
-    backgroundColor: '#EA580C',
+    backgroundColor: '#B45309',
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: 'center',
-    shadowColor: '#EA580C',
+    shadowColor: '#B45309',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 3,
   },
   botonDeshabilitado: {
-    backgroundColor: '#94A3B8',
+    backgroundColor: '#9E9E9E',
+  },
+  filaBotonTexto: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   textoBotonInscribirme: {
     color: '#FFFFFF',
@@ -589,7 +601,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     textAlign: 'center',
-    paddingHorizontal: 8,
   },
   centroMensaje: {
     flex: 1,
@@ -599,11 +610,11 @@ const styles = StyleSheet.create({
   },
   textoNoEncontrado: {
     fontSize: 14,
-    color: '#64748B',
+    color: COLORES.grisNeutro,
     marginBottom: 16,
   },
   botonRegresar: {
-    backgroundColor: '#0284C7',
+    backgroundColor: COLORES.verdePino,
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,

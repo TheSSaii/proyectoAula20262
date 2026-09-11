@@ -157,6 +157,19 @@ Documento generado mediante transacción atómica que vincula al estudiante con 
   "fechaInscripcion": "2026-09-08 22:30:00",
   "asistenciaMinima": "80% de asistencia obligatoria"
 }
+### Colección: `users`
+Perfil institucional del estudiante en Firestore (vinculado con su UID de Firebase Auth, sin exponer contraseñas):
+```json
+{
+  "uid": "uid_estudiante_firebase_auth",
+  "email": "estudiante@tdea.edu.co",
+  "nombre": "Juan Pérez",
+  "rol": "estudiante",
+  "institucion": "Tecnológico de Antioquia",
+  "sede": "Campus Robledo",
+  "creadoEn": "Timestamp",
+  "actualizadoEn": "Timestamp"
+}
 ```
 
 ---

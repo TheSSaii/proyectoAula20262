@@ -3,6 +3,8 @@
  * @description Pantalla de perfil de usuario en CanchaYa.
  * Muestra información del estudiante autenticado, datos institucionales de Bienestar Institucional (TdeA)
  * y permite cerrar sesión en Firebase Auth con persistencia nativa en AsyncStorage.
+ * Diseñado bajo la identidad oficial TdeA (Verde Pino, Verde Lima, Gris Neutro y Negro Institucional)
+ * e iconografía vectorial profesional de Ionicons.
  * @module screens/PerfilScreen
  */
 
@@ -17,14 +19,19 @@ import {
   SafeAreaView,
   ScrollView,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContexto';
 import Badge from '../components/Badge';
 import { ejecutarSeedAcudes } from '../services/seedAcudes';
+import { COLORES, SOMBRAS } from '../constants/theme';
 
 export default function PerfilScreen() {
-  const { user, logout } = useAuth();
+  const { user, perfil, logout } = useAuth();
   const [saliendo, setSaliendo] = useState(false);
   const [sembrando, setSembrando] = useState(false);
+
+  const nombreMostrado = perfil?.nombre || user?.displayName || 'Estudiante TdeA';
+  const rolMostrado = perfil?.rol ? perfil.rol.toUpperCase() : 'ESTUDIANTE';
 
   const handleCerrarSesion = () => {
     Alert.alert(
@@ -69,41 +76,74 @@ export default function PerfilScreen() {
           {/* Avatar representativo */}
           <View style={styles.avatar}>
             <Text style={styles.textoAvatar}>
-              {(user?.displayName?.[0] || user?.email?.[0] || 'U').toUpperCase()}
+              {(nombreMostrado?.[0] || user?.email?.[0] || 'U').toUpperCase()}
             </Text>
           </View>
 
-          <Text style={styles.nombre}>{user?.displayName || 'Estudiante TdeA'}</Text>
+          <Text style={styles.nombre}>{nombreMostrado}</Text>
           <Text style={styles.correo}>{user?.email}</Text>
 
           <View style={styles.badgeRol}>
-            <Badge estado="inscrito" texto="Comunidad TdeA · Cátedras ACUDE" />
+            <Badge estado="inscrito" texto={`Comunidad TdeA · ${rolMostrado}`} />
           </View>
 
           {/* Tarjeta de detalles de cuenta */}
           <View style={styles.tarjetaDetalles}>
             <View style={styles.filaDetalle}>
-              <Text style={styles.labelDetalle}>Institución:</Text>
-              <Text style={styles.valorDetalle}>Tecnológico de Antioquia</Text>
+              <View style={styles.filaLabel}>
+                <Ionicons name="school-outline" size={16} color={COLORES.verdePino} style={{ marginRight: 8 }} />
+                <Text style={styles.labelDetalle}>Institución:</Text>
+              </View>
+              <Text style={styles.valorDetalle}>{perfil?.institucion || 'Tecnológico de Antioquia'}</Text>
             </View>
+
             <View style={styles.separador} />
+
             <View style={styles.filaDetalle}>
-              <Text style={styles.labelDetalle}>Sede Principal:</Text>
-              <Text style={styles.valorDetalle}>Campus Robledo</Text>
+              <View style={styles.filaLabel}>
+                <Ionicons name="location-outline" size={16} color={COLORES.verdePino} style={{ marginRight: 8 }} />
+                <Text style={styles.labelDetalle}>Sede Principal:</Text>
+              </View>
+              <Text style={styles.valorDetalle}>{perfil?.sede || 'Campus Robledo'}</Text>
             </View>
+
             <View style={styles.separador} />
+
             <View style={styles.filaDetalle}>
-              <Text style={styles.labelDetalle}>Espacio ACUDE:</Text>
-              <Text style={styles.valorDetalle}>Bloque 10 (Bienestar / Coliseo)</Text>
+              <View style={styles.filaLabel}>
+                <Ionicons name="shield-checkmark-outline" size={16} color={COLORES.verdePino} style={{ marginRight: 8 }} />
+                <Text style={styles.labelDetalle}>Rol en Plataforma:</Text>
+              </View>
+              <Text style={styles.valorDetalle}>{rolMostrado}</Text>
             </View>
+
             <View style={styles.separador} />
+
             <View style={styles.filaDetalle}>
-              <Text style={styles.labelDetalle}>Plataforma Base:</Text>
-              <Text style={styles.valorDetalle}>Campus TdeA (Web Oficial)</Text>
+              <View style={styles.filaLabel}>
+                <Ionicons name="fitness-outline" size={16} color={COLORES.verdePino} style={{ marginRight: 8 }} />
+                <Text style={styles.labelDetalle}>Espacio ACUDE:</Text>
+              </View>
+              <Text style={styles.valorDetalle}>Bloque 10 (Bienestar)</Text>
             </View>
+
             <View style={styles.separador} />
+
             <View style={styles.filaDetalle}>
-              <Text style={styles.labelDetalle}>Identificador (UID):</Text>
+              <View style={styles.filaLabel}>
+                <Ionicons name="globe-outline" size={16} color={COLORES.verdePino} style={{ marginRight: 8 }} />
+                <Text style={styles.labelDetalle}>Plataforma Base:</Text>
+              </View>
+              <Text style={styles.valorDetalle}>Campus TdeA (Web)</Text>
+            </View>
+
+            <View style={styles.separador} />
+
+            <View style={styles.filaDetalle}>
+              <View style={styles.filaLabel}>
+                <Ionicons name="key-outline" size={16} color={COLORES.verdePino} style={{ marginRight: 8 }} />
+                <Text style={styles.labelDetalle}>Identificador (UID):</Text>
+              </View>
               <Text style={styles.valorUid} numberOfLines={1} ellipsizeMode="middle">
                 {user?.uid}
               </Text>
@@ -118,11 +158,14 @@ export default function PerfilScreen() {
             activeOpacity={0.8}
           >
             {sembrando ? (
-              <ActivityIndicator color="#0284C7" size="small" />
+              <ActivityIndicator color={COLORES.verdePino} size="small" />
             ) : (
-              <Text style={styles.textoBotonSincronizar}>
-                🔄 Sincronizar Catálogo ACUDE (Bloque 10)
-              </Text>
+              <View style={styles.filaBotonSincronizar}>
+                <Ionicons name="sync-outline" size={18} color={COLORES.verdePino} style={{ marginRight: 8 }} />
+                <Text style={styles.textoBotonSincronizar}>
+                  Sincronizar Catálogo ACUDE (Bloque 10)
+                </Text>
+              </View>
             )}
           </TouchableOpacity>
 
@@ -134,9 +177,12 @@ export default function PerfilScreen() {
             activeOpacity={0.8}
           >
             {saliendo ? (
-              <ActivityIndicator color="#DC2626" size="small" />
+              <ActivityIndicator color={COLORES.error} size="small" />
             ) : (
-              <Text style={styles.textoBotonSalir}>🚪 Cerrar Sesión</Text>
+              <View style={styles.filaBotonSalir}>
+                <Ionicons name="log-out-outline" size={18} color={COLORES.error} style={{ marginRight: 8 }} />
+                <Text style={styles.textoBotonSalir}>Cerrar Sesión</Text>
+              </View>
             )}
           </TouchableOpacity>
         </View>
@@ -148,7 +194,7 @@ export default function PerfilScreen() {
 const styles = StyleSheet.create({
   contenedor: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: COLORES.fondo,
   },
   scroll: {
     paddingBottom: 32,
@@ -161,15 +207,13 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#0284C7',
+    backgroundColor: COLORES.verdePino,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
-    shadowColor: '#0284C7',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 3,
+    borderWidth: 3,
+    borderColor: COLORES.verdeLima,
+    ...SOMBRAS.boton,
   },
   textoAvatar: {
     fontSize: 32,
@@ -179,11 +223,11 @@ const styles = StyleSheet.create({
   nombre: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#0F172A',
+    color: COLORES.negroInstitucional,
   },
   correo: {
     fontSize: 14,
-    color: '#64748B',
+    color: COLORES.grisNeutro,
     marginTop: 4,
   },
   badgeRol: {
@@ -192,62 +236,67 @@ const styles = StyleSheet.create({
   },
   tarjetaDetalles: {
     width: '100%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORES.superficie,
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: COLORES.borde,
     marginBottom: 20,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 1,
+    ...SOMBRAS.suave,
   },
   filaDetalle: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     paddingVertical: 10,
+  },
+  filaLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   labelDetalle: {
     fontSize: 13,
-    color: '#64748B',
+    color: COLORES.grisNeutro,
     fontWeight: '500',
   },
   valorDetalle: {
     fontSize: 13,
-    color: '#0F172A',
+    color: COLORES.negroInstitucional,
     fontWeight: '700',
   },
   valorUid: {
     fontSize: 12,
-    color: '#475569',
+    color: COLORES.grisNeutro,
     fontFamily: 'monospace',
-    maxWidth: 160,
+    maxWidth: 150,
   },
   separador: {
     height: 1,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: COLORES.borde,
   },
   botonSincronizar: {
     width: '100%',
-    backgroundColor: '#F0F9FF',
+    backgroundColor: COLORES.acentoClaro,
     borderWidth: 1,
-    borderColor: '#BAE6FD',
+    borderColor: '#CBE58B',
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
   },
+  filaBotonSincronizar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   textoBotonSincronizar: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#0284C7',
+    color: COLORES.verdePino,
   },
   botonSalir: {
     width: '100%',
-    backgroundColor: '#FEE2E2',
+    backgroundColor: COLORES.errorFondo,
     borderWidth: 1,
     borderColor: '#FECACA',
     paddingVertical: 14,
@@ -255,9 +304,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  filaBotonSalir: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   textoBotonSalir: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#DC2626',
+    color: COLORES.error,
   },
 });

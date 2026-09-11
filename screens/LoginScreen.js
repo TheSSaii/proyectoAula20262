@@ -1,8 +1,8 @@
 /**
  * @file LoginScreen.js
  * @description Pantalla de inicio de sesión de CanchaYa (TdeA).
- * Gestiona el formulario de acceso con validación de correo y contraseña,
- * soporte para texto seguro, manejo de estados de carga y llamada al AuthContexto.
+ * Gestiona el acceso de estudiantes con la identidad visual institucional oficial
+ * (Verde Pino, Verde Lima, Gris Neutro y Negro Institucional) e iconografía profesional de Ionicons.
  * @module screens/LoginScreen
  */
 
@@ -17,18 +17,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContexto';
+import LogoInstitucional from '../components/LogoInstitucional';
+import { COLORES, SOMBRAS } from '../constants/theme';
 
-/**
- * Pantalla de inicio de sesión.
- *
- * @param {Object} props
- * @param {Object} [props.navigation] - Objeto de navegación provisto por React Navigation.
- * @param {Function} [props.onIrARegistro] - Callback alternativo para alternar a la pantalla de registro.
- * @returns {React.JSX.Element}
- */
 export default function LoginScreen({ navigation, onIrARegistro }) {
   const { login } = useAuth();
 
@@ -38,7 +32,6 @@ export default function LoginScreen({ navigation, onIrARegistro }) {
   const [cargando, setCargando] = useState(false);
   const [errorLocal, setErrorLocal] = useState('');
 
-  // Validaciones del lado del cliente antes de enviar a Firebase
   const validarFormulario = () => {
     setErrorLocal('');
 
@@ -47,7 +40,6 @@ export default function LoginScreen({ navigation, onIrARegistro }) {
       return false;
     }
 
-    // Expresión regular estándar para validación básica de correo
     const regexEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!regexEmail.test(email.trim())) {
       setErrorLocal('El formato del correo electrónico no es válido.');
@@ -69,7 +61,6 @@ export default function LoginScreen({ navigation, onIrARegistro }) {
       setCargando(true);
       setErrorLocal('');
       await login(email, password);
-      // Al resolverse el login, AuthContexto actualiza 'user' y el router redirige automáticamente
     } catch (error) {
       setErrorLocal(error.message);
     } finally {
@@ -94,16 +85,16 @@ export default function LoginScreen({ navigation, onIrARegistro }) {
         contentContainerStyle={styles.scrollInterno}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Cabecera / Branding */}
+        {/* Cabecera / Branding con Logo Oficial */}
         <View style={styles.cabecera}>
-          <View style={styles.circuloLogo}>
-            <Text style={styles.iconoLogo}>🏟️</Text>
-          </View>
+          <LogoInstitucional size={84} redondeado conSombra style={{ marginBottom: 14 }} />
           <Text style={styles.titulo}>CanchaYa</Text>
           <Text style={styles.subtitulo}>
             Extensión Móvil de Campus TdeA · Cátedras ACUDE
           </Text>
-          <Text style={styles.insigniaTdeA}>Tecnológico de Antioquia</Text>
+          <View style={styles.badgeInstitucional}>
+            <Text style={styles.insigniaTdeA}>Tecnológico de Antioquia</Text>
+          </View>
         </View>
 
         {/* Tarjeta del Formulario */}
@@ -113,33 +104,38 @@ export default function LoginScreen({ navigation, onIrARegistro }) {
           {/* Mensaje de Error en pantalla */}
           {errorLocal ? (
             <View style={styles.cajaError}>
-              <Text style={styles.textoError}>⚠️ {errorLocal}</Text>
+              <Ionicons name="alert-circle-outline" size={18} color={COLORES.error} style={{ marginRight: 6 }} />
+              <Text style={styles.textoError}>{errorLocal}</Text>
             </View>
           ) : null}
 
           {/* Campo Correo */}
           <Text style={styles.label}>Correo Electrónico</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="usuario@tdea.edu.co"
-            placeholderTextColor="#94A3B8"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-            value={email}
-            onChangeText={(texto) => {
-              setEmail(texto);
-              if (errorLocal) setErrorLocal('');
-            }}
-          />
+          <View style={styles.contenedorInput}>
+            <Ionicons name="mail-outline" size={18} color={COLORES.grisNeutro} style={styles.iconoInput} />
+            <TextInput
+              style={styles.input}
+              placeholder="usuario@tdea.edu.co"
+              placeholderTextColor="#9E9E9E"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              value={email}
+              onChangeText={(texto) => {
+                setEmail(texto);
+                if (errorLocal) setErrorLocal('');
+              }}
+            />
+          </View>
 
           {/* Campo Contraseña */}
           <Text style={styles.label}>Contraseña</Text>
           <View style={styles.contenedorPassword}>
+            <Ionicons name="lock-closed-outline" size={18} color={COLORES.grisNeutro} style={styles.iconoInput} />
             <TextInput
               style={styles.inputPassword}
               placeholder="••••••••"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor="#9E9E9E"
               secureTextEntry={!mostrarPassword}
               autoCapitalize="none"
               value={password}
@@ -153,7 +149,11 @@ export default function LoginScreen({ navigation, onIrARegistro }) {
               onPress={() => setMostrarPassword(!mostrarPassword)}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <Text style={styles.textoOjo}>{mostrarPassword ? '🙈' : '👁️'}</Text>
+              <Ionicons
+                name={mostrarPassword ? 'eye-off-outline' : 'eye-outline'}
+                size={20}
+                color={COLORES.grisNeutro}
+              />
             </TouchableOpacity>
           </View>
 
@@ -187,7 +187,7 @@ export default function LoginScreen({ navigation, onIrARegistro }) {
 const styles = StyleSheet.create({
   contenedorPrincipal: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: COLORES.fondo,
   },
   scrollInterno: {
     flexGrow: 1,
@@ -203,123 +203,126 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: '#0284C7',
+    backgroundColor: COLORES.verdePino,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
-    shadowColor: '#0284C7',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  iconoLogo: {
-    fontSize: 34,
+    marginBottom: 14,
+    borderWidth: 2,
+    borderColor: COLORES.verdeLima,
+    ...SOMBRAS.boton,
   },
   titulo: {
     fontSize: 30,
     fontWeight: '800',
-    color: '#0F172A',
+    color: COLORES.negroInstitucional,
     letterSpacing: -0.5,
   },
   subtitulo: {
     fontSize: 14,
-    color: '#64748B',
+    color: COLORES.grisNeutro,
     textAlign: 'center',
     marginTop: 4,
   },
+  badgeInstitucional: {
+    backgroundColor: COLORES.acentoClaro,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 20,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#CBE58B',
+  },
   insigniaTdeA: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
-    color: '#0284C7',
+    color: COLORES.verdePino,
     textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginTop: 6,
+    letterSpacing: 0.8,
   },
   tarjetaFormulario: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORES.superficie,
     borderRadius: 20,
     padding: 24,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 3,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: COLORES.borde,
+    ...SOMBRAS.media,
   },
   tituloFormulario: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#0F172A',
+    color: COLORES.negroInstitucional,
     marginBottom: 16,
   },
   cajaError: {
-    backgroundColor: '#FEF2F2',
+    backgroundColor: COLORES.errorFondo,
     borderWidth: 1,
     borderColor: '#FECACA',
     borderRadius: 10,
     padding: 10,
     marginBottom: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   textoError: {
-    color: '#B91C1C',
+    color: COLORES.error,
     fontSize: 13,
     fontWeight: '500',
+    flex: 1,
   },
   label: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#334155',
+    color: COLORES.negroInstitucional,
     marginBottom: 6,
   },
-  input: {
-    backgroundColor: '#F8FAFC',
+  contenedorInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORES.superficieGris,
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: COLORES.borde,
     borderRadius: 12,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
+    marginBottom: 14,
+  },
+  iconoInput: {
+    marginRight: 8,
+  },
+  input: {
+    flex: 1,
     paddingVertical: 12,
     fontSize: 15,
-    color: '#0F172A',
-    marginBottom: 14,
+    color: COLORES.negroInstitucional,
   },
   contenedorPassword: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: COLORES.superficieGris,
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: COLORES.borde,
     borderRadius: 12,
+    paddingHorizontal: 12,
     marginBottom: 20,
   },
   inputPassword: {
     flex: 1,
-    paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
-    color: '#0F172A',
+    color: COLORES.negroInstitucional,
   },
   botonOjo: {
-    paddingHorizontal: 14,
-  },
-  textoOjo: {
-    fontSize: 18,
+    paddingHorizontal: 8,
   },
   botonIngreso: {
-    backgroundColor: '#0284C7',
+    backgroundColor: COLORES.verdePino,
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#0284C7',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 2,
+    ...SOMBRAS.boton,
   },
   botonDeshabilitado: {
-    backgroundColor: '#94A3B8',
+    backgroundColor: '#9E9E9E',
   },
   textoBotonIngreso: {
     color: '#FFFFFF',
@@ -334,11 +337,11 @@ const styles = StyleSheet.create({
   },
   textoPregunta: {
     fontSize: 13,
-    color: '#64748B',
+    color: COLORES.grisNeutro,
   },
   textoEnlaceRegistro: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#0284C7',
+    color: COLORES.verdePino,
   },
 });

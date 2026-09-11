@@ -1,8 +1,8 @@
 /**
  * @file RegistroScreen.js
  * @description Pantalla de registro de nuevos usuarios en CanchaYa.
- * Valida nombre completo, formato de correo, longitud mínima de contraseña (6 caracteres)
- * y coincidencia de confirmación antes de enviar a Firebase Authentication.
+ * Diseñada bajo la línea gráfica oficial TdeA (Verde Pino, Verde Lima, Gris Neutro y Negro Institucional)
+ * e iconografía vectorial profesional de Ionicons.
  * @module screens/RegistroScreen
  */
 
@@ -18,16 +18,10 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContexto';
+import { COLORES, SOMBRAS } from '../constants/theme';
 
-/**
- * Pantalla de registro de usuario.
- *
- * @param {Object} props
- * @param {Object} [props.navigation] - Objeto de navegación de React Navigation.
- * @param {Function} [props.onIrALogin] - Callback alternativo para regresar al login.
- * @returns {React.JSX.Element}
- */
 export default function RegistroScreen({ navigation, onIrALogin }) {
   const { register } = useAuth();
 
@@ -78,7 +72,6 @@ export default function RegistroScreen({ navigation, onIrALogin }) {
       setCargando(true);
       setErrorLocal('');
       await register(email, password, nombre);
-      // Tras registrarse con éxito, el contexto actualiza el usuario automáticamente
     } catch (error) {
       setErrorLocal(error.message);
     } finally {
@@ -118,47 +111,55 @@ export default function RegistroScreen({ navigation, onIrALogin }) {
           {/* Alerta de Error */}
           {errorLocal ? (
             <View style={styles.cajaError}>
-              <Text style={styles.textoError}>⚠️ {errorLocal}</Text>
+              <Ionicons name="alert-circle-outline" size={18} color={COLORES.error} style={{ marginRight: 6 }} />
+              <Text style={styles.textoError}>{errorLocal}</Text>
             </View>
           ) : null}
 
           {/* Nombre Completo */}
           <Text style={styles.label}>Nombre Completo</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Ej. Juan Pérez"
-            placeholderTextColor="#94A3B8"
-            autoCapitalize="words"
-            value={nombre}
-            onChangeText={(texto) => {
-              setNombre(texto);
-              if (errorLocal) setErrorLocal('');
-            }}
-          />
+          <View style={styles.contenedorInput}>
+            <Ionicons name="person-outline" size={18} color={COLORES.grisNeutro} style={styles.iconoInput} />
+            <TextInput
+              style={styles.input}
+              placeholder="Ej. Juan Pérez"
+              placeholderTextColor="#9E9E9E"
+              autoCapitalize="words"
+              value={nombre}
+              onChangeText={(texto) => {
+                setNombre(texto);
+                if (errorLocal) setErrorLocal('');
+              }}
+            />
+          </View>
 
           {/* Correo Electrónico */}
           <Text style={styles.label}>Correo Electrónico</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="juan.perez@tdea.edu.co"
-            placeholderTextColor="#94A3B8"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-            value={email}
-            onChangeText={(texto) => {
-              setEmail(texto);
-              if (errorLocal) setErrorLocal('');
-            }}
-          />
+          <View style={styles.contenedorInput}>
+            <Ionicons name="mail-outline" size={18} color={COLORES.grisNeutro} style={styles.iconoInput} />
+            <TextInput
+              style={styles.input}
+              placeholder="juan.perez@tdea.edu.co"
+              placeholderTextColor="#9E9E9E"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              value={email}
+              onChangeText={(texto) => {
+                setEmail(texto);
+                if (errorLocal) setErrorLocal('');
+              }}
+            />
+          </View>
 
           {/* Contraseña */}
           <Text style={styles.label}>Contraseña (mínimo 6 caracteres)</Text>
           <View style={styles.contenedorPassword}>
+            <Ionicons name="lock-closed-outline" size={18} color={COLORES.grisNeutro} style={styles.iconoInput} />
             <TextInput
               style={styles.inputPassword}
               placeholder="••••••••"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor="#9E9E9E"
               secureTextEntry={!mostrarPassword}
               autoCapitalize="none"
               value={password}
@@ -171,17 +172,22 @@ export default function RegistroScreen({ navigation, onIrALogin }) {
               style={styles.botonOjo}
               onPress={() => setMostrarPassword(!mostrarPassword)}
             >
-              <Text style={styles.textoOjo}>{mostrarPassword ? '🙈' : '👁️'}</Text>
+              <Ionicons
+                name={mostrarPassword ? 'eye-off-outline' : 'eye-outline'}
+                size={20}
+                color={COLORES.grisNeutro}
+              />
             </TouchableOpacity>
           </View>
 
           {/* Confirmar Contraseña */}
           <Text style={styles.label}>Confirmar Contraseña</Text>
           <View style={styles.contenedorPassword}>
+            <Ionicons name="lock-closed-outline" size={18} color={COLORES.grisNeutro} style={styles.iconoInput} />
             <TextInput
               style={styles.inputPassword}
               placeholder="••••••••"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor="#9E9E9E"
               secureTextEntry={!mostrarPassword}
               autoCapitalize="none"
               value={confirmarPassword}
@@ -222,7 +228,7 @@ export default function RegistroScreen({ navigation, onIrALogin }) {
 const styles = StyleSheet.create({
   contenedorPrincipal: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: COLORES.fondo,
   },
   scrollInterno: {
     flexGrow: 1,
@@ -237,95 +243,95 @@ const styles = StyleSheet.create({
   titulo: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#0F172A',
+    color: COLORES.negroInstitucional,
     letterSpacing: -0.5,
   },
   subtitulo: {
     fontSize: 14,
-    color: '#64748B',
+    color: COLORES.grisNeutro,
     textAlign: 'center',
     marginTop: 6,
     paddingHorizontal: 12,
   },
   tarjetaFormulario: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORES.superficie,
     borderRadius: 20,
     padding: 24,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 3,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: COLORES.borde,
+    ...SOMBRAS.media,
   },
   cajaError: {
-    backgroundColor: '#FEF2F2',
+    backgroundColor: COLORES.errorFondo,
     borderWidth: 1,
     borderColor: '#FECACA',
     borderRadius: 10,
     padding: 10,
     marginBottom: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   textoError: {
-    color: '#B91C1C',
+    color: COLORES.error,
     fontSize: 13,
     fontWeight: '500',
+    flex: 1,
   },
   label: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#334155',
+    color: COLORES.negroInstitucional,
     marginBottom: 6,
   },
-  input: {
-    backgroundColor: '#F8FAFC',
+  contenedorInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORES.superficieGris,
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: COLORES.borde,
     borderRadius: 12,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
+    marginBottom: 14,
+  },
+  iconoInput: {
+    marginRight: 8,
+  },
+  input: {
+    flex: 1,
     paddingVertical: 12,
     fontSize: 15,
-    color: '#0F172A',
-    marginBottom: 14,
+    color: COLORES.negroInstitucional,
   },
   contenedorPassword: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: COLORES.superficieGris,
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: COLORES.borde,
     borderRadius: 12,
+    paddingHorizontal: 12,
     marginBottom: 14,
   },
   inputPassword: {
     flex: 1,
-    paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
-    color: '#0F172A',
+    color: COLORES.negroInstitucional,
   },
   botonOjo: {
-    paddingHorizontal: 14,
-  },
-  textoOjo: {
-    fontSize: 18,
+    paddingHorizontal: 8,
   },
   botonRegistro: {
-    backgroundColor: '#0284C7',
+    backgroundColor: COLORES.verdePino,
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 8,
-    shadowColor: '#0284C7',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 2,
+    ...SOMBRAS.boton,
   },
   botonDeshabilitado: {
-    backgroundColor: '#94A3B8',
+    backgroundColor: '#9E9E9E',
   },
   textoBotonRegistro: {
     color: '#FFFFFF',
@@ -340,11 +346,11 @@ const styles = StyleSheet.create({
   },
   textoPregunta: {
     fontSize: 13,
-    color: '#64748B',
+    color: COLORES.grisNeutro,
   },
   textoEnlaceLogin: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#0284C7',
+    color: COLORES.verdePino,
   },
 });

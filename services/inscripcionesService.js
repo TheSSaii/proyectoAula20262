@@ -157,6 +157,7 @@ export async function cancelarInscripcion(inscripcionId, acudeId) {
 
   try {
     const resultado = await runTransaction(db, async (transaction) => {
+      // 1. TODAS LAS LECTURAS PRIMERO (READS)
       const inscripcionDoc = await transaction.get(inscripcionRef);
       if (!inscripcionDoc.exists()) {
         throw new Error('El registro de inscripción no fue encontrado.');
@@ -167,14 +168,16 @@ export async function cancelarInscripcion(inscripcionId, acudeId) {
         throw new Error('Esta inscripción ya se encuentra cancelada.');
       }
 
-      // Marcar inscripción como cancelada
+      const acudeDoc = await transaction.get(acudeRef);
+
+      // 2. TODAS LAS ESCRITURAS AL FINAL (WRITES)
+      // A. Marcar inscripción como cancelada
       transaction.update(inscripcionRef, {
         estado: 'cancelada',
         fechaCancelacion: dayjs().format('YYYY-MM-DD HH:mm:ss'),
       });
 
-      // Devolver el cupo en acudes si el documento existe
-      const acudeDoc = await transaction.get(acudeRef);
+      // B. Devolver el cupo en acudes si el documento existe
       if (acudeDoc.exists()) {
         const dataAcude = acudeDoc.data();
         const cuposActuales = typeof dataAcude.cuposDisponibles === 'number'

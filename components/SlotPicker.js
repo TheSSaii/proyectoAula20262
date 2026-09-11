@@ -2,24 +2,16 @@
  * @file SlotPicker.js
  * @description Componente visual para renderizar las franjas horarias fijas y recurrentes
  * de una cátedra ACUDE.
- * En lugar de turnos de alquiler sueltos, presenta las sesiones semanales oficiales:
- * día de la semana, franja de clase, espacio físico dentro del Bloque 10 y docente a cargo.
+ * Implementa la paleta de identidad oficial TdeA (Verde Pino, Verde Lima, Gris Neutro, Negro Institucional)
+ * e iconografía profesional de Ionicons.
  * @module components/SlotPicker
  */
 
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { COLORES, SOMBRAS } from '../constants/theme';
 
-/**
- * Visualizador de franjas y sesiones de cátedras ACUDE.
- *
- * @param {Object} props
- * @param {Array<Object>} [props.sesiones=[]] - Lista de sesiones recurrentes.
- * @param {string} [props.diaFiltro=null] - Filtro opcional por día específico.
- * @param {Function} [props.onSelectSesion] - Callback al pulsar una sesión.
- * @param {object} [props.style]
- * @returns {React.JSX.Element}
- */
 export default function SlotPicker({
   sesiones = [],
   diaFiltro = null,
@@ -35,7 +27,7 @@ export default function SlotPicker({
   if (sesiones.length === 0) {
     return (
       <View style={[styles.contenedorVacio, style]}>
-        <Text style={styles.iconoVacio}>⏰</Text>
+        <Ionicons name="time-outline" size={36} color={COLORES.grisNeutro} />
         <Text style={styles.textoVacio}>
           No hay franjas horarias configuradas para esta cátedra.
         </Text>
@@ -45,7 +37,10 @@ export default function SlotPicker({
 
   return (
     <View style={[styles.contenedor, style]}>
-      <Text style={styles.tituloSeccion}>⏰ Franjas y Sesiones Semanales</Text>
+      <View style={styles.filaTituloSeccion}>
+        <Ionicons name="time-outline" size={18} color={COLORES.verdePino} style={{ marginRight: 6 }} />
+        <Text style={styles.tituloSeccion}>Franjas y Sesiones Semanales</Text>
+      </View>
       <Text style={styles.descripcionSeccion}>
         Horarios fijos en los que debes asistir en el campus Robledo (Bloque 10):
       </Text>
@@ -77,7 +72,7 @@ export default function SlotPicker({
               {/* Columna Derecha: Ubicación y Docente */}
               <View style={styles.columnaInfo}>
                 <View style={styles.filaInfo}>
-                  <Text style={styles.iconoDetalle}>📍</Text>
+                  <Ionicons name="location-outline" size={14} color={COLORES.grisNeutro} style={styles.iconoDetalle} />
                   <Text style={styles.textoLugar} numberOfLines={2}>
                     {sesion.lugar || 'Campus Robledo - Bloque 10'}
                   </Text>
@@ -85,7 +80,7 @@ export default function SlotPicker({
 
                 {sesion.docente && (
                   <View style={styles.filaInfo}>
-                    <Text style={styles.iconoDetalle}>👨‍🏫</Text>
+                    <Ionicons name="person-outline" size={14} color={COLORES.verdePino} style={styles.iconoDetalle} />
                     <Text style={styles.textoDocente} numberOfLines={1}>
                       {sesion.docente}
                     </Text>
@@ -108,24 +103,44 @@ export default function SlotPicker({
 
 const styles = StyleSheet.create({
   contenedor: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORES.superficie,
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: COLORES.borde,
     marginVertical: 8,
+    ...SOMBRAS.suave,
+  },
+  contenedorVacio: {
+    backgroundColor: COLORES.superficie,
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: COLORES.borde,
+    marginVertical: 8,
+  },
+  textoVacio: {
+    fontSize: 13,
+    color: COLORES.grisNeutro,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  filaTituloSeccion: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   tituloSeccion: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 4,
+    color: COLORES.negroInstitucional,
   },
   descripcionSeccion: {
     fontSize: 12,
-    color: '#64748B',
+    color: COLORES.grisNeutro,
+    marginTop: 3,
     marginBottom: 14,
-    lineHeight: 18,
   },
   listaSesiones: {
     gap: 10,
@@ -133,44 +148,43 @@ const styles = StyleSheet.create({
   tarjetaSesion: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: COLORES.superficieGris,
     borderRadius: 12,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: COLORES.borde,
   },
   columnaTiempo: {
-    width: 110,
+    width: 105,
     alignItems: 'flex-start',
   },
   badgeDia: {
-    backgroundColor: '#0284C7',
+    backgroundColor: COLORES.acentoClaro,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 8,
-    marginBottom: 6,
+    borderRadius: 6,
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: '#CBE58B',
   },
   textoBadgeDia: {
-    color: '#FFFFFF',
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    color: COLORES.verdePino,
   },
   textoHora: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORES.negroInstitucional,
   },
   divisorVertical: {
     width: 1,
     height: '80%',
-    backgroundColor: '#CBD5E1',
-    marginHorizontal: 10,
+    backgroundColor: COLORES.borde,
+    marginHorizontal: 12,
   },
   columnaInfo: {
     flex: 1,
-    justifyContent: 'center',
   },
   filaInfo: {
     flexDirection: 'row',
@@ -178,45 +192,25 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   iconoDetalle: {
-    fontSize: 12,
     marginRight: 6,
   },
   textoLugar: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#1E293B',
+    fontWeight: '600',
+    color: COLORES.negroInstitucional,
     flex: 1,
   },
   textoDocente: {
     fontSize: 12,
-    color: '#475569',
-    fontWeight: '500',
+    color: COLORES.grisNeutro,
     flex: 1,
   },
   tagPresencial: {
     marginTop: 2,
   },
   textoTagPresencial: {
-    fontSize: 11,
-    color: '#0284C7',
+    fontSize: 10,
+    color: COLORES.verdePino,
     fontWeight: '600',
-  },
-  contenedorVacio: {
-    padding: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F8FAFC',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  iconoVacio: {
-    fontSize: 32,
-    marginBottom: 8,
-  },
-  textoVacio: {
-    fontSize: 13,
-    color: '#64748B',
-    textAlign: 'center',
   },
 });
