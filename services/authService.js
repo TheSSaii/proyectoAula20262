@@ -37,6 +37,8 @@ export function formatearErrorAuth(codigoError) {
       return 'Error de red. Verifica tu conexión a internet.';
     case 'auth/too-many-requests':
       return 'Demasiados intentos fallidos. Intenta más tarde o restablece tu contraseña.';
+    case 'auth/configuration-not-found':
+      return 'Firebase Authentication no está habilitado en este proyecto. Actívalo en la consola de Firebase.';
     default:
       return 'Ocurrió un error inesperado al autenticar. Intenta nuevamente.';
   }

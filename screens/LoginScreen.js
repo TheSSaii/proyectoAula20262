@@ -17,6 +17,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContexto';
@@ -32,22 +33,36 @@ export default function LoginScreen({ navigation, onIrARegistro }) {
   const [cargando, setCargando] = useState(false);
   const [errorLocal, setErrorLocal] = useState('');
 
+  const mostrarAlertaError = (titulo, mensaje) => {
+    setErrorLocal(mensaje);
+    Alert.alert(titulo, mensaje, [{ text: 'Entendido', style: 'default' }]);
+  };
+
   const validarFormulario = () => {
     setErrorLocal('');
 
     if (!email.trim()) {
-      setErrorLocal('Ingresa tu correo electrónico.');
+      mostrarAlertaError(
+        'Correo Requerido',
+        'Por favor ingresa tu correo institucional o personal para iniciar sesión.'
+      );
       return false;
     }
 
     const regexEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!regexEmail.test(email.trim())) {
-      setErrorLocal('El formato del correo electrónico no es válido.');
+      mostrarAlertaError(
+        'Correo Inválido',
+        'El formato del correo electrónico no es válido. Ejemplo: usuario@tdea.edu.co'
+      );
       return false;
     }
 
     if (!password) {
-      setErrorLocal('Ingresa tu contraseña.');
+      mostrarAlertaError(
+        'Contraseña Requerida',
+        'Por favor ingresa tu contraseña para acceder a tu cuenta.'
+      );
       return false;
     }
 
@@ -62,7 +77,13 @@ export default function LoginScreen({ navigation, onIrARegistro }) {
       setErrorLocal('');
       await login(email, password);
     } catch (error) {
-      setErrorLocal(error.message);
+      const mensaje = error.message || 'Credenciales inválidas. Verifica tu correo y contraseña.';
+      setErrorLocal(mensaje);
+      Alert.alert(
+        'Error de Inicio de Sesión',
+        mensaje,
+        [{ text: 'Reintentar', style: 'default' }]
+      );
     } finally {
       setCargando(false);
     }
