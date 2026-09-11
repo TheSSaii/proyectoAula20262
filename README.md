@@ -231,14 +231,6 @@ Respuestas técnicas y de arquitectura para responder a preguntas de evaluación
 
 A continuación se documentan los errores reportados durante las pruebas de usuario (QA) extraídos de la revisión en video. Estos problemas deben solucionarse para garantizar la estabilidad de la aplicación y una correcta experiencia de usuario.
 
-### 🚨 1. Errores Críticos y de Base de Datos (Firebase)
-*   **Crash por Transacción al Cancelar Inscripción:**
-    *   **Descripción:** Al intentar liberar un cupo (cancelar inscripción), la aplicación arroja un error en la consola de Firebase: `Firestore transactions require all reads to be executed before all writes`.
-    *   **Solución Esperada:** Refactorizar el código de la transacción para asegurar que todas las operaciones de lectura se ejecuten antes de cualquier operación de escritura.
-*   **Gestión y Seguridad de Usuarios en Firestore:**
-    *   **Descripción:** Es obligatorio que la gestión de identidades sea segura. 
-    *   **Solución Esperada:** Asegurar que los usuarios registrados se visualicen correctamente en la colección correspondiente de la base de datos en Firestore, y garantizar que **las contraseñas estén obligatoriamente encriptadas**.
-
 ### ⚙️ 2. Errores de Lógica de Negocio y Flujo de Inscripción
 *   **Desacople en la Selección del Día/Horario:**
     *   **Descripción:** Al ingresar a la ficha de horarios de una cátedra, el sistema pide confirmar la inscripción, pero no permite al usuario elegir a qué horario específico desea matricularse.
