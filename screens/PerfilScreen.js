@@ -188,30 +188,6 @@ export default function PerfilScreen() {
             </View>
           </View>
 
-          {/* Botón de Sincronización / Seed de Cátedras */}
-          <TouchableOpacity
-            style={styles.botonSincronizar}
-            onPress={handleSincronizarCatalogo}
-            disabled={sembrando}
-            activeOpacity={0.8}
-          >
-            {sembrando ? (
-              <ActivityIndicator color={COLORES.verdePino} size="small" />
-            ) : (
-              <View style={styles.columnaBotonSincronizar}>
-                <View style={styles.filaBotonSincronizar}>
-                  <Ionicons name="sync-outline" size={18} color={COLORES.verdePino} style={{ marginRight: 8 }} />
-                  <Text style={styles.textoBotonSincronizar}>
-                    Sincronizar Catálogo ACUDE en Firestore
-                  </Text>
-                </View>
-                <Text style={styles.subtextoBotonSincronizar}>
-                  Carga e inicializa en Cloud Firestore las 6 cátedras oficiales del Bloque 10 con IDs deterministas y actualización idempotente (merge: true).
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
-
           {/* Botón de Cerrar Sesión */}
           <TouchableOpacity
             style={styles.botonSalir}
