@@ -1,41 +1,38 @@
 /**
  * @file SlotPicker.js
- * @description Componente visual para renderizar las franjas horarias fijas y recurrentes
+ * @description Componente visual interactivo para renderizar las franjas horarias fijas y recurrentes
  * de una cátedra ACUDE.
- * En lugar de turnos de alquiler sueltos, presenta las sesiones semanales oficiales:
- * día de la semana, franja de clase, espacio físico dentro del Bloque 10 y docente a cargo.
+ * Permite al estudiante seleccionar interactivamente su franja horaria preferida,
+ * resaltando visualmente la sesión elegida con la paleta de identidad oficial TdeA
+ * (Verde Pino, Verde Lima, Gris Neutro, Negro Institucional).
  * @module components/SlotPicker
  */
 
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { COLORES, SOMBRAS } from '../constants/theme';
 
-/**
- * Visualizador de franjas y sesiones de cátedras ACUDE.
- *
- * @param {Object} props
- * @param {Array<Object>} [props.sesiones=[]] - Lista de sesiones recurrentes.
- * @param {string} [props.diaFiltro=null] - Filtro opcional por día específico.
- * @param {Function} [props.onSelectSesion] - Callback al pulsar una sesión.
- * @param {object} [props.style]
- * @returns {React.JSX.Element}
- */
 export default function SlotPicker({
   sesiones = [],
   diaFiltro = null,
+  sesionSeleccionada = null,
   onSelectSesion,
+  onLimpiarFiltroDia,
   style,
 }) {
   const sesionesFiltradas = diaFiltro
     ? sesiones.filter(
-        (s) => s.dia?.toLowerCase() === diaFiltro.toLowerCase()
+        (s) => s.dia?.toLowerCase().trim() === diaFiltro.toLowerCase().trim()
       )
     : sesiones;
+
+  const diasConClase = [...new Set(sesiones.map((s) => s.dia))].filter(Boolean);
 
   if (sesiones.length === 0) {
     return (
       <View style={[styles.contenedorVacio, style]}>
-        <Text style={styles.iconoVacio}>⏰</Text>
+        <Ionicons name="time-outline" size={36} color={COLORES.grisNeutro} />
         <Text style={styles.textoVacio}>
           No hay franjas horarias configuradas para esta cátedra.
         </Text>
@@ -45,87 +42,213 @@ export default function SlotPicker({
 
   return (
     <View style={[styles.contenedor, style]}>
-      <Text style={styles.tituloSeccion}>⏰ Franjas y Sesiones Semanales</Text>
+      <View style={styles.filaTituloSeccion}>
+        <Ionicons name="time-outline" size={18} color={COLORES.verdePino} style={{ marginRight: 6 }} />
+        <Text style={styles.tituloSeccion}>Franjas y Sesiones Semanales</Text>
+      </View>
       <Text style={styles.descripcionSeccion}>
-        Horarios fijos en los que debes asistir en el campus Robledo (Bloque 10):
+        {diaFiltro
+          ? `Mostrando sesiones programadas para los ${diaFiltro}:`
+          : 'Selecciona la franja horaria fija en la que deseas matricularte:'}
       </Text>
 
-      <View style={styles.listaSesiones}>
-        {sesionesFiltradas.map((sesion, index) => {
-          const rangoHora = `${sesion.horaInicio || '00:00'} a ${
-            sesion.horaFin || '00:00'
-          }`;
-
-          return (
+      {/* Si se filtró por un día que no tiene clases */}
+      {sesionesFiltradas.length === 0 ? (
+        <View style={styles.cajaDiaSinSesion}>
+          <Ionicons name="calendar-outline" size={24} color={COLORES.alerta} style={{ marginBottom: 6 }} />
+          <Text style={styles.tituloDiaSinSesion}>
+            Esta cátedra no sesiona los {diaFiltro}
+          </Text>
+          <Text style={styles.textoDiaSinSesion}>
+            Días con clase programada: <Text style={{ fontWeight: '700' }}>{diasConClase.join(', ')}</Text>
+          </Text>
+          {typeof onLimpiarFiltroDia === 'function' && (
             <TouchableOpacity
-              key={sesion.id || `sesion-${index}`}
-              activeOpacity={onSelectSesion ? 0.8 : 1}
-              onPress={() => onSelectSesion && onSelectSesion(sesion)}
-              style={styles.tarjetaSesion}
+              style={styles.botonMostrarTodas}
+              onPress={onLimpiarFiltroDia}
+              activeOpacity={0.8}
             >
-              {/* Columna Izquierda: Día y Hora */}
-              <View style={styles.columnaTiempo}>
-                <View style={styles.badgeDia}>
-                  <Text style={styles.textoBadgeDia}>{sesion.dia}</Text>
-                </View>
-                <Text style={styles.textoHora}>{rangoHora}</Text>
-              </View>
+              <Text style={styles.textoBotonMostrarTodas}>Ver todas las franjas semanales</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      ) : (
+        <View style={styles.listaSesiones}>
+          {sesionesFiltradas.map((sesion, index) => {
+            const rangoHora = `${sesion.horaInicio || '00:00'} a ${
+              sesion.horaFin || '00:00'
+            }`;
 
-              {/* Divisor vertical */}
-              <View style={styles.divisorVertical} />
+            const esSeleccionada =
+              sesionSeleccionada &&
+              (sesionSeleccionada.id === sesion.id ||
+                (sesionSeleccionada.dia === sesion.dia &&
+                  sesionSeleccionada.horaInicio === sesion.horaInicio));
 
-              {/* Columna Derecha: Ubicación y Docente */}
-              <View style={styles.columnaInfo}>
-                <View style={styles.filaInfo}>
-                  <Text style={styles.iconoDetalle}>📍</Text>
-                  <Text style={styles.textoLugar} numberOfLines={2}>
-                    {sesion.lugar || 'Campus Robledo - Bloque 10'}
-                  </Text>
-                </View>
-
-                {sesion.docente && (
-                  <View style={styles.filaInfo}>
-                    <Text style={styles.iconoDetalle}>👨‍🏫</Text>
-                    <Text style={styles.textoDocente} numberOfLines={1}>
-                      {sesion.docente}
+            return (
+              <TouchableOpacity
+                key={sesion.id || `sesion-${index}`}
+                activeOpacity={0.85}
+                onPress={() => onSelectSesion && onSelectSesion(sesion)}
+                style={[
+                  styles.tarjetaSesion,
+                  esSeleccionada && styles.tarjetaSesionSeleccionada,
+                ]}
+              >
+                {/* Columna Izquierda: Día y Hora */}
+                <View style={styles.columnaTiempo}>
+                  <View
+                    style={[
+                      styles.badgeDia,
+                      esSeleccionada && styles.badgeDiaSeleccionado,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.textoBadgeDia,
+                        esSeleccionada && styles.textoBadgeDiaSeleccionado,
+                      ]}
+                    >
+                      {sesion.dia}
                     </Text>
                   </View>
-                )}
-
-                <View style={styles.tagPresencial}>
-                  <Text style={styles.textoTagPresencial}>
-                    • Asistencia presencial directa
-                  </Text>
+                  <Text style={styles.textoHora}>{rangoHora}</Text>
                 </View>
-              </View>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+
+                {/* Divisor vertical */}
+                <View
+                  style={[
+                    styles.divisorVertical,
+                    esSeleccionada && styles.divisorVerticalSeleccionado,
+                  ]}
+                />
+
+                {/* Columna Derecha: Ubicación, Docente y Acción */}
+                <View style={styles.columnaInfo}>
+                  <View style={styles.filaInfo}>
+                    <Ionicons name="location-outline" size={14} color={COLORES.grisNeutro} style={styles.iconoDetalle} />
+                    <Text style={styles.textoLugar} numberOfLines={2}>
+                      {sesion.lugar || 'Campus Robledo - Bloque 10'}
+                    </Text>
+                  </View>
+
+                  {sesion.docente && (
+                    <View style={styles.filaInfo}>
+                      <Ionicons name="person-outline" size={14} color={COLORES.verdePino} style={styles.iconoDetalle} />
+                      <Text style={styles.textoDocente} numberOfLines={1}>
+                        {sesion.docente}
+                      </Text>
+                    </View>
+                  )}
+
+                  {/* Estado / Botón de Selección interactivo */}
+                  <View
+                    style={[
+                      styles.pildoraSeleccion,
+                      esSeleccionada && styles.pildoraSeleccionActiva,
+                    ]}
+                  >
+                    <Ionicons
+                      name={esSeleccionada ? 'checkmark-circle' : 'radio-button-off'}
+                      size={14}
+                      color={esSeleccionada ? COLORES.verdePino : COLORES.grisNeutro}
+                      style={{ marginRight: 5 }}
+                    />
+                    <Text
+                      style={[
+                        styles.textoPildoraSeleccion,
+                        esSeleccionada && styles.textoPildoraSeleccionActiva,
+                      ]}
+                    >
+                      {esSeleccionada
+                        ? 'Horario seleccionado'
+                        : 'Toca para elegir esta franja'}
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   contenedor: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORES.superficie,
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: COLORES.borde,
     marginVertical: 8,
+    ...SOMBRAS.suave,
+  },
+  contenedorVacio: {
+    backgroundColor: COLORES.superficie,
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: COLORES.borde,
+    marginVertical: 8,
+  },
+  textoVacio: {
+    fontSize: 13,
+    color: COLORES.grisNeutro,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  filaTituloSeccion: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   tituloSeccion: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 4,
+    color: COLORES.negroInstitucional,
   },
   descripcionSeccion: {
     fontSize: 12,
-    color: '#64748B',
+    color: COLORES.grisNeutro,
+    marginTop: 3,
     marginBottom: 14,
-    lineHeight: 18,
+  },
+  cajaDiaSinSesion: {
+    backgroundColor: '#FEF3C7',
+    borderRadius: 12,
+    padding: 14,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  tituloDiaSinSesion: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#92400E',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  textoDiaSinSesion: {
+    fontSize: 12,
+    color: '#78350F',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  botonMostrarTodas: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#D97706',
+  },
+  textoBotonMostrarTodas: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#92400E',
   },
   listaSesiones: {
     gap: 10,
@@ -133,44 +256,58 @@ const styles = StyleSheet.create({
   tarjetaSesion: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: COLORES.superficieGris,
     borderRadius: 12,
     padding: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderWidth: 1.5,
+    borderColor: COLORES.borde,
+  },
+  tarjetaSesionSeleccionada: {
+    backgroundColor: COLORES.acentoClaro,
+    borderColor: COLORES.verdePino,
+    ...SOMBRAS.suave,
   },
   columnaTiempo: {
-    width: 110,
+    width: 105,
     alignItems: 'flex-start',
   },
   badgeDia: {
-    backgroundColor: '#0284C7',
+    backgroundColor: '#E5E9E5',
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 8,
-    marginBottom: 6,
+    borderRadius: 6,
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: COLORES.borde,
+  },
+  badgeDiaSeleccionado: {
+    backgroundColor: COLORES.verdePino,
+    borderColor: COLORES.verdePino,
   },
   textoBadgeDia: {
-    color: '#FFFFFF',
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    color: COLORES.negroInstitucional,
+  },
+  textoBadgeDiaSeleccionado: {
+    color: '#FFFFFF',
   },
   textoHora: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORES.negroInstitucional,
   },
   divisorVertical: {
     width: 1,
-    height: '80%',
-    backgroundColor: '#CBD5E1',
-    marginHorizontal: 10,
+    height: '85%',
+    backgroundColor: COLORES.borde,
+    marginHorizontal: 12,
+  },
+  divisorVerticalSeleccionado: {
+    backgroundColor: '#CBE58B',
   },
   columnaInfo: {
     flex: 1,
-    justifyContent: 'center',
   },
   filaInfo: {
     flexDirection: 'row',
@@ -178,45 +315,42 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   iconoDetalle: {
-    fontSize: 12,
     marginRight: 6,
   },
   textoLugar: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#1E293B',
+    fontWeight: '600',
+    color: COLORES.negroInstitucional,
     flex: 1,
   },
   textoDocente: {
     fontSize: 12,
-    color: '#475569',
-    fontWeight: '500',
+    color: COLORES.grisNeutro,
     flex: 1,
   },
-  tagPresencial: {
-    marginTop: 2,
-  },
-  textoTagPresencial: {
-    fontSize: 11,
-    color: '#0284C7',
-    fontWeight: '600',
-  },
-  contenedorVacio: {
-    padding: 24,
+  pildoraSeleccion: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F8FAFC',
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: COLORES.borde,
+    marginTop: 4,
   },
-  iconoVacio: {
-    fontSize: 32,
-    marginBottom: 8,
+  pildoraSeleccionActiva: {
+    backgroundColor: '#FFFFFF',
+    borderColor: COLORES.verdePino,
   },
-  textoVacio: {
-    fontSize: 13,
-    color: '#64748B',
-    textAlign: 'center',
+  textoPildoraSeleccion: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: COLORES.grisNeutro,
+  },
+  textoPildoraSeleccionActiva: {
+    color: COLORES.verdePino,
+    fontWeight: '700',
   },
 });

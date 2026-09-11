@@ -107,6 +107,29 @@ export async function inscribirEstudiante(acudeId, userId, datosEstudiante = {})
         actualizadoEn: new Date(),
       });
 
+      // Determinar horario seleccionado específico (o el primero como fallback)
+      const horarioElegido =
+        datosEstudiante.horarioSeleccionado ||
+        (Array.isArray(dataAcude.horarios) && dataAcude.horarios.length > 0
+          ? dataAcude.horarios[0]
+          : null);
+
+      const diaElegido =
+        datosEstudiante.diaSeleccionado ||
+        horarioElegido?.dia ||
+        'Por programar';
+
+      const franjaElegida =
+        datosEstudiante.franjaSeleccionada ||
+        (horarioElegido
+          ? `${horarioElegido.horaInicio || '00:00'} - ${horarioElegido.horaFin || '00:00'}`
+          : 'Horario institucional');
+
+      const lugarElegido =
+        horarioElegido?.lugar ||
+        dataAcude.ubicacion ||
+        'Campus Robledo - Bloque 10';
+
       // 3. Crear el documento de inscripción vinculado al estudiante
       transaction.set(nuevaInscripcionRef, {
         idUsuario: userId,
@@ -119,6 +142,11 @@ export async function inscribirEstudiante(acudeId, userId, datosEstudiante = {})
         docente: dataAcude.docente || 'Docente asignado',
         ubicacion: dataAcude.ubicacion || 'Campus Robledo - Bloque 10',
         horarios: Array.isArray(dataAcude.horarios) ? dataAcude.horarios : [],
+        // Metadatos específicos de la sesión elegida por el estudiante
+        horarioSeleccionado: horarioElegido,
+        diaSeleccionado: diaElegido,
+        franjaSeleccionada: franjaElegida,
+        lugarSesion: lugarElegido,
         estado: 'activa',
         fechaInscripcion: dayjs().format('YYYY-MM-DD HH:mm:ss'),
         asistenciaMinima: dataAcude.asistenciaMinima || '80% de asistencia obligatoria',
@@ -127,7 +155,9 @@ export async function inscribirEstudiante(acudeId, userId, datosEstudiante = {})
       return {
         exitoso: true,
         inscripcionId: nuevaInscripcionRef.id,
-        mensaje: `¡Inscripción exitosa en ${dataAcude.nombre}! Recuerda la regla del 80% de asistencia mínima.`,
+        diaSeleccionado: diaElegido,
+        franjaSeleccionada: franjaElegida,
+        mensaje: `¡Inscripción exitosa en ${dataAcude.nombre} para los ${diaElegido} (${franjaElegida})! Recuerda la regla del 80% de asistencia mínima.`,
       };
     });
 
@@ -148,15 +178,15 @@ export async function inscribirEstudiante(acudeId, userId, datosEstudiante = {})
  * @returns {Promise<{ exitoso: boolean, mensaje: string }>}
  */
 export async function cancelarInscripcion(inscripcionId, acudeId) {
-  if (!inscripcionId || !acudeId) {
-    throw new Error('Se requiere el ID de la inscripción y el ID de la cátedra.');
+  if (!inscripcionId) {
+    throw new Error('Se requiere el ID de la inscripción.');
   }
 
   const inscripcionRef = doc(db, COLECCION_INSCRIPCIONES, inscripcionId);
-  const acudeRef = doc(db, COLECCION_ACUDES, acudeId);
 
   try {
     const resultado = await runTransaction(db, async (transaction) => {
+      // 1. TODAS LAS LECTURAS PRIMERO (READS)
       const inscripcionDoc = await transaction.get(inscripcionRef);
       if (!inscripcionDoc.exists()) {
         throw new Error('El registro de inscripción no fue encontrado.');
@@ -167,15 +197,29 @@ export async function cancelarInscripcion(inscripcionId, acudeId) {
         throw new Error('Esta inscripción ya se encuentra cancelada.');
       }
 
-      // Marcar inscripción como cancelada
+      // Determinar ID de cátedra para devolver el cupo (del documento o del parámetro)
+      const idAcudeDestino =
+        acudeId ||
+        dataInscripcion.idAcude ||
+        dataInscripcion.acudeId ||
+        dataInscripcion.idCatedra;
+
+      let acudeDoc = null;
+      let acudeRef = null;
+      if (idAcudeDestino) {
+        acudeRef = doc(db, COLECCION_ACUDES, idAcudeDestino);
+        acudeDoc = await transaction.get(acudeRef);
+      }
+
+      // 2. TODAS LAS ESCRITURAS AL FINAL (WRITES)
+      // A. Marcar inscripción como cancelada
       transaction.update(inscripcionRef, {
         estado: 'cancelada',
         fechaCancelacion: dayjs().format('YYYY-MM-DD HH:mm:ss'),
       });
 
-      // Devolver el cupo en acudes si el documento existe
-      const acudeDoc = await transaction.get(acudeRef);
-      if (acudeDoc.exists()) {
+      // B. Devolver el cupo en acudes si el documento existe
+      if (acudeDoc && acudeDoc.exists() && acudeRef) {
         const dataAcude = acudeDoc.data();
         const cuposActuales = typeof dataAcude.cuposDisponibles === 'number'
           ? dataAcude.cuposDisponibles

@@ -2,20 +2,18 @@
  * @file InicioScreen.js
  * @description Pantalla principal del Catálogo de Cátedras y Actividades ACUDE
  * (Bienestar Institucional - Tecnológico de Antioquia).
- * Extensión móvil complementaria de Campus TdeA.
- * Provee búsqueda en tiempo real, chips de categoría ('Todos', 'Deportivas', 'Culturales'),
- * renderizado optimizado en FlatList con AcudeCard, pull-to-refresh y botón de siembra
- * rápida si Firestore no tiene datos.
- * El TextInput permanece fuera del FlatList para garantizar persistencia estricta del foco del teclado.
+ * Diseñado con la paleta de identidad oficial TdeA (Verde Pino, Verde Lima, Gris Neutro, Negro Institucional),
+ * iconografía vectorial profesional de Ionicons y encabezado dinámico colapsable al hacer scroll:
+ * el saludo con el logo y el nombre del estudiante se contrae suavemente dejando fija la zona esencial
+ * (Barra de búsqueda, filtros de categorías y contador).
  * @module screens/InicioScreen
  */
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
   TextInput,
-  FlatList,
   TouchableOpacity,
   ScrollView,
   StyleSheet,
@@ -25,17 +23,38 @@ import {
   StatusBar,
   Platform,
   Alert,
+  Animated,
+  FlatList,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import AcudeCard from '../components/AcudeCard';
 import Badge from '../components/Badge';
+import LogoInstitucional from '../components/LogoInstitucional';
 import { getAcudes } from '../services/acudesService';
 import { ejecutarSeedAcudes } from '../services/seedAcudes';
+import { actualizarPerfilUsuario } from '../services/userService';
 import { useAuth } from '../contexts/AuthContexto';
+import { COLORES, SOMBRAS } from '../constants/theme';
 
-const CATEGORIAS_FILTRO = ['Todos', 'Deportivas', 'Culturales'];
+/**
+ * Normaliza cadenas removiendo tildes, diacríticos y espacios para búsquedas robustas.
+ */
+function normalizarTexto(txt = '') {
+  return String(txt || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+}
+
+const CATEGORIAS_FILTRO = [
+  { clave: 'Todos', label: 'Todas las Cátedras', icono: 'layers-outline' },
+  { clave: 'Deportivas', label: 'Deportivas', icono: 'trophy-outline' },
+  { clave: 'Culturales', label: 'Culturales', icono: 'color-palette-outline' },
+];
 
 export default function InicioScreen({ navigation }) {
-  const { user } = useAuth();
+  const { user, perfil, recargarPerfil } = useAuth();
 
   const [acudes, setAcudes] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -43,13 +62,51 @@ export default function InicioScreen({ navigation }) {
   const [sembrando, setSembrando] = useState(false);
   const [error, setError] = useState(null);
 
-  // Estados de filtrado y búsqueda reactiva
   const [busqueda, setBusqueda] = useState('');
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState('Todos');
 
-  /**
-   * Carga las actividades ACUDE desde Firestore.
-   */
+  // Control de colapso con umbral e histéresis:
+  // 1 = expandido (muestra saludo, nombre y logo)
+  // 0 = colapsado (altura 0, sólo muestra barra de búsqueda y filtros esenciales)
+  const animSaludo = useRef(new Animated.Value(1)).current;
+  const colapsadoRef = useRef(false);
+
+  const alturaSaludo = animSaludo.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 48],
+  });
+
+  const opacidadSaludo = animSaludo.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1],
+  });
+
+  const margenSaludo = animSaludo.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 10],
+  });
+
+  const handleScroll = (event) => {
+    const y = event.nativeEvent.contentOffset.y;
+    // Si baja más de 40px y está expandido, se encoge suavemente
+    if (y > 40 && !colapsadoRef.current) {
+      colapsadoRef.current = true;
+      Animated.timing(animSaludo, {
+        toValue: 0,
+        duration: 220,
+        useNativeDriver: false,
+      }).start();
+    } else if (y < 12 && colapsadoRef.current) {
+      // Si regresa a la parte superior, se vuelve a desplegar suavemente
+      colapsadoRef.current = false;
+      Animated.timing(animSaludo, {
+        toValue: 1,
+        duration: 220,
+        useNativeDriver: false,
+      }).start();
+    }
+  };
+
   const cargarDatos = useCallback(async () => {
     try {
       setError(null);
@@ -68,45 +125,50 @@ export default function InicioScreen({ navigation }) {
     cargarDatos();
   }, [cargarDatos]);
 
+  useEffect(() => {
+    const unsubscribe = navigation?.addListener?.('focus', () => {
+      cargarDatos();
+    });
+    return unsubscribe;
+  }, [navigation, cargarDatos]);
+
   const handleRefrescar = () => {
     setRefrescando(true);
     cargarDatos();
   };
 
-  /**
-   * Permite poblar Firestore directamente desde la app si la base de datos está vacía.
-   */
   const handleSembrarDatos = async () => {
     try {
       setSembrando(true);
       const res = await ejecutarSeedAcudes();
-      Alert.alert('Datos Sembrados', res.mensaje);
+      Alert.alert('Datos Sincronizados', res.mensaje);
       await cargarDatos();
     } catch (err) {
-      Alert.alert('Error al sembrar', err.message);
+      Alert.alert('Error al sincronizar', err.message);
     } finally {
       setSembrando(false);
     }
   };
 
-  /**
-   * Filtro en memoria por texto (nombre, docente, ubicación, disciplina) y chip de categoría.
-   */
   const acudesFiltrados = useMemo(() => {
     return acudes.filter((acude) => {
-      const termino = busqueda.toLowerCase().trim();
+      // 1. Normalización diacrítica (ignora tildes como 'futbol' -> 'fútbol')
+      const termino = normalizarTexto(busqueda);
       const coincideBusqueda =
         !termino ||
-        acude.nombre?.toLowerCase().includes(termino) ||
-        acude.docente?.toLowerCase().includes(termino) ||
-        acude.disciplina?.toLowerCase().includes(termino) ||
-        acude.ubicacion?.toLowerCase().includes(termino);
+        normalizarTexto(acude.nombre).includes(termino) ||
+        normalizarTexto(acude.docente).includes(termino) ||
+        normalizarTexto(acude.disciplina).includes(termino) ||
+        normalizarTexto(acude.ubicacion).includes(termino);
 
+      // 2. Filtro de Categoría tolerante a variantes
       let coincideCategoria = true;
+      const catNormalizada = normalizarTexto(acude.categoria || '');
+
       if (categoriaSeleccionada === 'Deportivas') {
-        coincideCategoria = acude.categoria?.toLowerCase() === 'deportiva';
+        coincideCategoria = catNormalizada.includes('deport');
       } else if (categoriaSeleccionada === 'Culturales') {
-        coincideCategoria = acude.categoria?.toLowerCase() === 'cultural';
+        coincideCategoria = catNormalizada.includes('cultur');
       }
 
       return coincideBusqueda && coincideCategoria;
@@ -118,12 +180,13 @@ export default function InicioScreen({ navigation }) {
   };
 
   const renderVacio = () => {
-    // Si no hay acudes en la base de datos en lo absoluto
     if (acudes.length === 0) {
       return (
         <View style={styles.contenedorVacio}>
-          <Text style={styles.iconoVacio}>🌱</Text>
-          <Text style={styles.tituloVacio}>Base de datos lista para sembrar</Text>
+          <View style={styles.circuloIconoVacio}>
+            <Ionicons name="server-outline" size={36} color={COLORES.verdePino} />
+          </View>
+          <Text style={styles.tituloVacio}>Base de datos lista para sincronizar</Text>
           <Text style={styles.textoVacio}>
             Aún no se encuentran registradas las cátedras ACUDE del TdeA en Firestore.
             Puedes cargar el catálogo oficial de Bienestar Institucional con un toque:
@@ -136,19 +199,23 @@ export default function InicioScreen({ navigation }) {
             {sembrando ? (
               <ActivityIndicator color="#FFFFFF" size="small" />
             ) : (
-              <Text style={styles.textoBotonSembrar}>
-                🌱 Cargar Cátedras ACUDE TdeA (Seed)
-              </Text>
+              <View style={styles.filaBotonSembrar}>
+                <Ionicons name="cloud-download-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+                <Text style={styles.textoBotonSembrar}>
+                  Cargar Catálogo ACUDE TdeA
+                </Text>
+              </View>
             )}
           </TouchableOpacity>
         </View>
       );
     }
 
-    // Si hay acudes pero no coinciden con la búsqueda/filtro
     return (
       <View style={styles.contenedorVacio}>
-        <Text style={styles.iconoVacio}>🔎</Text>
+        <View style={styles.circuloIconoVacio}>
+          <Ionicons name="search-outline" size={36} color={COLORES.grisNeutro} />
+        </View>
         <Text style={styles.tituloVacio}>No encontramos cátedras coincidentes</Text>
         <Text style={styles.textoVacio}>
           No hay actividades para "{busqueda || categoriaSeleccionada}". Prueba con otros términos o restablece los filtros.
@@ -166,30 +233,98 @@ export default function InicioScreen({ navigation }) {
     );
   };
 
+  const nombreUsuario = perfil?.nombre || user?.displayName || 'Estudiante TdeA';
+  const sedeUsuario = perfil?.sede?.toLowerCase().includes('itag')
+    ? 'Campus Itagüí'
+    : 'Campus Robledo';
+  const esItagui = sedeUsuario === 'Campus Itagüí';
+
+  const handleCambiarCampus = () => {
+    Alert.alert(
+      'Sedes Institucionales TdeA',
+      `Sede actual seleccionada: ${sedeUsuario}\n\n• Campus Robledo: Sede principal donde se ubica el Bloque 10 con la totalidad de los escenarios deportivos y culturales ACUDE.\n• Campus Itagüí: Sede Aburrá Sur para formación académica descentralizada.\n\n¿Deseas alternar tu campus activo en tu perfil?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: esItagui ? 'Cambiar a Campus Robledo' : 'Cambiar a Campus Itagüí',
+          onPress: async () => {
+            if (!user?.uid) return;
+            try {
+              const nuevaSede = esItagui ? 'Campus Robledo' : 'Campus Itagüí';
+              await actualizarPerfilUsuario(user.uid, { sede: nuevaSede });
+              if (recargarPerfil) {
+                await recargarPerfil();
+              }
+              Alert.alert('Sede Actualizada', `Tu campus activo ahora es ${nuevaSede}.`);
+            } catch (err) {
+              Alert.alert('Error', 'No se pudo cambiar el campus: ' + err.message);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.contenedor}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
+      <StatusBar barStyle="dark-content" backgroundColor={COLORES.fondo} />
 
-      {/* Cabecera estática: Saludo, Buscador y Filtros fuera del FlatList */}
+      {/* Cabecera: Sección dinámica con saludo colapsable + filtros esenciales fijados */}
       <View style={styles.cabeceraContenedor}>
-        {/* Saludo institucional y badge */}
-        <View style={styles.filaSaludo}>
-          <View>
-            <Text style={styles.subtituloSaludo}>CanchaYa · Extensión Campus TdeA</Text>
-            <Text style={styles.tituloUsuario}>
-              {user?.displayName || 'Estudiante TdeA'} 👋
-            </Text>
+        {/* Fila superior que se contrae suavemente: Logo + Nombre + Badge de Campus */}
+        <Animated.View
+          style={[
+            styles.filaSaludoAnimada,
+            {
+              height: alturaSaludo,
+              opacity: opacidadSaludo,
+              marginBottom: margenSaludo,
+            },
+          ]}
+        >
+          <View style={styles.columnaLogoYUsuario}>
+            <LogoInstitucional size={42} redondeado conSombra style={{ marginRight: 10 }} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.subtituloSaludo}>Campus TdeA · ACUDE</Text>
+              <Text style={styles.tituloUsuario} numberOfLines={1}>
+                {nombreUsuario}
+              </Text>
+            </View>
           </View>
-          <Badge estado="info" texto="Bienestar Bloque 10" tamano="pequeno" />
-        </View>
+          <TouchableOpacity
+            onPress={handleCambiarCampus}
+            activeOpacity={0.7}
+            accessibilityLabel="Cambiar sede institucional"
+          >
+            <Badge
+              estado={esItagui ? 'inscrito' : 'info'}
+              texto={sedeUsuario}
+              tamano="pequeno"
+            />
+          </TouchableOpacity>
+        </Animated.View>
 
-        {/* Barra de búsqueda */}
+        {/* Validación de Campus para estudiantes de Itagüí */}
+        {esItagui && (
+          <TouchableOpacity
+            style={styles.bannerValidacionCampus}
+            onPress={handleCambiarCampus}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="information-circle-outline" size={15} color="#92400E" style={{ marginRight: 6 }} />
+            <Text style={styles.textoBannerCampus}>
+              <Text style={{ fontWeight: '700' }}>Campus Itagüí:</Text> Las cátedras presenciales ACUDE se desarrollan en Campus Robledo (Bloque 10).
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Zona Esencial: Barra de búsqueda */}
         <View style={styles.contenedorBuscador}>
-          <Text style={styles.iconoBuscador}>🔍</Text>
+          <Ionicons name="search-outline" size={18} color={COLORES.grisNeutro} style={styles.iconoBuscador} />
           <TextInput
             style={styles.inputBuscador}
-            placeholder="Buscar por taller, docente o espacio (Bloque 10)..."
-            placeholderTextColor="#94A3B8"
+            placeholder="Buscar por taller, docente o espacio..."
+            placeholderTextColor="#9E9E9E"
             value={busqueda}
             onChangeText={setBusqueda}
             autoCorrect={false}
@@ -199,36 +334,42 @@ export default function InicioScreen({ navigation }) {
               onPress={() => setBusqueda('')}
               style={styles.botonLimpiar}
             >
-              <Text style={styles.textoLimpiar}>✕</Text>
+              <Ionicons name="close-circle" size={18} color={COLORES.grisNeutro} />
             </TouchableOpacity>
           )}
         </View>
 
-        {/* Selector horizontal de categorías (Chips) */}
+        {/* Selector horizontal de clases y categorías (Chips) */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.scrollCategorias}
         >
           {CATEGORIAS_FILTRO.map((cat) => {
-            const estaActiva = categoriaSeleccionada === cat;
+            const estaActiva = categoriaSeleccionada === cat.clave;
             return (
               <TouchableOpacity
-                key={cat}
+                key={cat.clave}
                 style={[
                   styles.chipCategoria,
                   estaActiva && styles.chipCategoriaActiva,
                 ]}
-                onPress={() => setCategoriaSeleccionada(cat)}
+                onPress={() => setCategoriaSeleccionada(cat.clave)}
                 activeOpacity={0.7}
               >
+                <Ionicons
+                  name={cat.icono}
+                  size={14}
+                  color={estaActiva ? '#FFFFFF' : COLORES.grisNeutro}
+                  style={{ marginRight: 6 }}
+                />
                 <Text
                   style={[
                     styles.textoChip,
                     estaActiva && styles.textoChipActivo,
                   ]}
                 >
-                  {cat === 'Todos' ? '✨ Todas las Cátedras' : cat === 'Deportivas' ? '⚽ Deportivas' : '🎭 Culturales'}
+                  {cat.label}
                 </Text>
               </TouchableOpacity>
             );
@@ -255,16 +396,17 @@ export default function InicioScreen({ navigation }) {
         </View>
       </View>
 
-      {/* Listado reactivo de Cátedras ACUDE */}
+      {/* Listado reactivo de Cátedras ACUDE con FlatList */}
       {cargando && !refrescando ? (
         <View style={styles.centroCarga}>
-          <ActivityIndicator size="large" color="#0284C7" />
+          <ActivityIndicator size="large" color={COLORES.verdePino} />
           <Text style={styles.textoCargando}>
             Consultando Cátedras ACUDE en Firestore...
           </Text>
         </View>
       ) : error ? (
         <View style={styles.cajaError}>
+          <Ionicons name="alert-circle-outline" size={36} color={COLORES.error} style={{ marginBottom: 8 }} />
           <Text style={styles.tituloError}>Error de conexión</Text>
           <Text style={styles.detalleError}>{error}</Text>
           <TouchableOpacity style={styles.botonReintentar} onPress={cargarDatos}>
@@ -281,11 +423,14 @@ export default function InicioScreen({ navigation }) {
           ListEmptyComponent={renderVacio}
           contentContainerStyle={styles.listaContenedor}
           keyboardShouldPersistTaps="handled"
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
           refreshControl={
             <RefreshControl
               refreshing={refrescando}
               onRefresh={handleRefrescar}
-              colors={['#0284C7']}
+              colors={[COLORES.verdePino]}
+              tintColor={COLORES.verdePino}
             />
           }
         />
@@ -297,91 +442,107 @@ export default function InicioScreen({ navigation }) {
 const styles = StyleSheet.create({
   contenedor: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: COLORES.fondo,
   },
   listaContenedor: {
+    paddingTop: 4,
     paddingBottom: 24,
   },
   cabeceraContenedor: {
     paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 6,
-    backgroundColor: '#F8FAFC',
+    paddingTop: 8,
+    paddingBottom: 4,
+    backgroundColor: COLORES.fondo,
   },
-  filaSaludo: {
+  bannerValidacionCampus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    marginBottom: 8,
+  },
+  textoBannerCampus: {
+    fontSize: 11,
+    color: '#92400E',
+    flex: 1,
+    lineHeight: 15,
+  },
+  filaSaludoAnimada: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    overflow: 'hidden',
+  },
+  columnaLogoYUsuario: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    paddingRight: 8,
   },
   subtituloSaludo: {
     fontSize: 11,
-    color: '#64748B',
+    color: COLORES.grisNeutro,
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   tituloUsuario: {
-    fontSize: 22,
+    fontSize: 19,
     fontWeight: '800',
-    color: '#0F172A',
+    color: COLORES.negroInstitucional,
     letterSpacing: -0.5,
-    marginTop: 2,
+    marginTop: 1,
   },
   contenedorBuscador: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORES.superficie,
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: Platform.OS === 'ios' ? 10 : 4,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginBottom: 12,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    borderColor: COLORES.borde,
+    marginBottom: 10,
+    ...SOMBRAS.suave,
   },
   iconoBuscador: {
-    fontSize: 16,
     marginRight: 8,
   },
   inputBuscador: {
     flex: 1,
     fontSize: 14,
-    color: '#0F172A',
+    color: COLORES.negroInstitucional,
   },
   botonLimpiar: {
     padding: 4,
   },
-  textoLimpiar: {
-    fontSize: 14,
-    color: '#94A3B8',
-    fontWeight: '700',
-  },
   scrollCategorias: {
-    paddingBottom: 8,
+    paddingBottom: 6,
     gap: 8,
   },
   chipCategoria: {
-    backgroundColor: '#FFFFFF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORES.superficie,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: COLORES.borde,
     marginRight: 6,
   },
   chipCategoriaActiva: {
-    backgroundColor: '#0284C7',
-    borderColor: '#0284C7',
+    backgroundColor: COLORES.verdePino,
+    borderColor: COLORES.verdePino,
   },
   textoChip: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#475569',
+    color: COLORES.grisNeutro,
   },
   textoChipActivo: {
     color: '#FFFFFF',
@@ -391,19 +552,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 4,
-    marginBottom: 6,
+    marginTop: 2,
+    marginBottom: 4,
     paddingHorizontal: 4,
   },
   textoContador: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#64748B',
+    color: COLORES.grisNeutro,
   },
   textoRestablecer: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#0284C7',
+    color: COLORES.verdePino,
   },
   centroCarga: {
     flex: 1,
@@ -413,7 +574,7 @@ const styles = StyleSheet.create({
   textoCargando: {
     marginTop: 12,
     fontSize: 14,
-    color: '#64748B',
+    color: COLORES.grisNeutro,
   },
   cajaError: {
     flex: 1,
@@ -424,20 +585,21 @@ const styles = StyleSheet.create({
   tituloError: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#991B1B',
+    color: COLORES.error,
     marginBottom: 6,
   },
   detalleError: {
     fontSize: 13,
-    color: '#64748B',
+    color: COLORES.grisNeutro,
     textAlign: 'center',
     marginBottom: 16,
   },
   botonReintentar: {
-    backgroundColor: '#0284C7',
+    backgroundColor: COLORES.verdePino,
     paddingVertical: 10,
     paddingHorizontal: 18,
     borderRadius: 10,
+    ...SOMBRAS.boton,
   },
   textoBotonReintentar: {
     color: '#FFFFFF',
@@ -449,26 +611,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  iconoVacio: {
-    fontSize: 48,
-    marginBottom: 12,
+  circuloIconoVacio: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: COLORES.acentoClaro,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#CBE58B',
   },
   tituloVacio: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#0F172A',
+    color: COLORES.negroInstitucional,
     marginBottom: 6,
     textAlign: 'center',
   },
   textoVacio: {
     fontSize: 13,
-    color: '#64748B',
+    color: COLORES.grisNeutro,
     textAlign: 'center',
     lineHeight: 18,
     marginBottom: 18,
   },
   botonLimpiarTodo: {
-    backgroundColor: '#F1F5F9',
+    backgroundColor: COLORES.superficie,
+    borderWidth: 1,
+    borderColor: COLORES.borde,
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 8,
@@ -476,18 +647,18 @@ const styles = StyleSheet.create({
   textoBotonLimpiarTodo: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#0284C7',
+    color: COLORES.verdePino,
   },
   botonSembrar: {
-    backgroundColor: '#16A34A',
+    backgroundColor: COLORES.verdePino,
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 12,
-    shadowColor: '#16A34A',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 3,
+    ...SOMBRAS.boton,
+  },
+  filaBotonSembrar: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   textoBotonSembrar: {
     color: '#FFFFFF',

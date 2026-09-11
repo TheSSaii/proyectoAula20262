@@ -14,21 +14,24 @@ import {
   registrarUsuario,
   cerrarSesion,
 } from '../services/authService';
+import { obtenerOCrearUsuario } from '../services/userService';
 
 /**
  * Contexto de autenticación.
  */
 export const AuthContexto = createContext({
   user: null,
+  perfil: null,
   loading: true,
   login: async () => {},
   register: async () => {},
   logout: async () => {},
+  recargarPerfil: async () => {},
 });
 
 /**
  * Hook personalizado para consumir el contexto de autenticación en cualquier parte del árbol de componentes.
- * @returns {{ user: import('firebase/auth').User|null, loading: boolean, login: Function, register: Function, logout: Function }}
+ * @returns {{ user: import('firebase/auth').User|null, perfil: Object|null, loading: boolean, login: Function, register: Function, logout: Function, recargarPerfil: Function }}
  */
 export function useAuth() {
   const context = useContext(AuthContexto);
@@ -48,12 +51,34 @@ export function useAuth() {
  */
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [perfil, setPerfil] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Sincroniza el documento en Firestore para usuarios existentes o nuevos (Forma A)
+  const sincronizarPerfil = async (usuarioAuth, datosExtra = {}) => {
+    if (!usuarioAuth) {
+      setPerfil(null);
+      return null;
+    }
+    try {
+      const perfilObtenido = await obtenerOCrearUsuario(usuarioAuth, datosExtra);
+      setPerfil(perfilObtenido);
+      return perfilObtenido;
+    } catch (err) {
+      console.error('Error sincronizando perfil en AuthProvider:', err);
+      return null;
+    }
+  };
 
   // Escuchar cambios de estado en Firebase Auth (Login, Logout, Persistencia en AsyncStorage)
   useEffect(() => {
-    const desuscribir = onAuthStateChanged(auth, (usuarioActual) => {
+    const desuscribir = onAuthStateChanged(auth, async (usuarioActual) => {
       setUser(usuarioActual);
+      if (usuarioActual) {
+        await sincronizarPerfil(usuarioActual);
+      } else {
+        setPerfil(null);
+      }
       setLoading(false);
     });
 
@@ -62,13 +87,14 @@ export function AuthProvider({ children }) {
   }, []);
 
   /**
-   * Inicia sesión y actualiza el estado global.
+   * Inicia sesión y actualiza el estado global sincronizando su perfil.
    */
   const login = async (email, password) => {
     setLoading(true);
     try {
       const usuario = await iniciarSesion(email, password);
       setUser(usuario);
+      await sincronizarPerfil(usuario);
       return usuario;
     } finally {
       setLoading(false);
@@ -76,13 +102,14 @@ export function AuthProvider({ children }) {
   };
 
   /**
-   * Registra un nuevo usuario y actualiza el estado global.
+   * Registra un nuevo usuario y sincroniza su perfil inicial en Firestore.
    */
   const register = async (email, password, nombre) => {
     setLoading(true);
     try {
       const nuevoUsuario = await registrarUsuario(email, password, nombre);
       setUser(nuevoUsuario);
+      await sincronizarPerfil(nuevoUsuario, { nombre });
       return nuevoUsuario;
     } finally {
       setLoading(false);
@@ -90,24 +117,37 @@ export function AuthProvider({ children }) {
   };
 
   /**
-   * Cierra la sesión activa.
+   * Cierra la sesión activa y limpia los estados.
    */
   const logout = async () => {
     setLoading(true);
     try {
       await cerrarSesion();
       setUser(null);
+      setPerfil(null);
     } finally {
       setLoading(false);
     }
   };
 
+  /**
+   * Permite forzar la recarga del perfil desde Firestore.
+   */
+  const recargarPerfil = async () => {
+    if (user) {
+      return await sincronizarPerfil(user);
+    }
+    return null;
+  };
+
   const valor = {
     user,
+    perfil,
     loading,
     login,
     register,
     logout,
+    recargarPerfil,
   };
 
   return (
@@ -116,3 +156,4 @@ export function AuthProvider({ children }) {
     </AuthContexto.Provider>
   );
 }
+

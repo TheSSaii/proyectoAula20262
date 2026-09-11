@@ -1,15 +1,17 @@
 /**
  * @file HorariosScreen.js
- * @description Pantalla para la consulta del cronograma semanal detallado de una Cátedra ACUDE.
+ * @description Pantalla para la consulta del cronograma semanal detallado y selección de franja
+ * para la inscripción formal a una Cátedra ACUDE.
  * Integra:
  * - DateSelector: visualizador interactivo de días de clase para evitar cruces con Campus TdeA.
- * - SlotPicker: desglose de sesiones fijas (día, franja horaria, espacio en Bloque 10 y docente).
+ * - SlotPicker: selección interactiva de sesiones fijas (día, franja horaria, espacio en Bloque 10 y docente).
+ * - Matrícula directa con captura explícita de la franja horaria elegida por el estudiante.
  * - Módulo de Sobrecupo Presencial Directo: orientación al estudiante para presentarse
  *   físicamente en la primera sesión directamente con el profesor en el aula/escenario sin trámites de oficina.
  * @module screens/HorariosScreen
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -18,38 +20,76 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import Badge from '../components/Badge';
 import DateSelector from '../components/DateSelector';
 import SlotPicker from '../components/SlotPicker';
 import { getHorariosAcude } from '../services/disponibilidadService';
+import {
+  inscribirEstudiante,
+  verificarInscripcionPrevia,
+} from '../services/inscripcionesService';
+import { useAuth } from '../contexts/AuthContexto';
+import { COLORES, SOMBRAS } from '../constants/theme';
 
 export default function HorariosScreen({ route, navigation }) {
   const { acude } = route.params || {};
+  const { user } = useAuth();
 
   const [horariosData, setHorariosData] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [diaSeleccionado, setDiaSeleccionado] = useState(null);
+  const [sesionSeleccionada, setSesionSeleccionada] = useState(null);
+  const [estaInscrito, setEstaInscrito] = useState(false);
+  const [inscribiendo, setInscribiendo] = useState(false);
+
+  // Revisar si ya está inscrito
+  const verificarEstado = useCallback(async () => {
+    if (!acude?.id || !user?.uid) return;
+    try {
+      const inscripcion = await verificarInscripcionPrevia(acude.id, user.uid);
+      setEstaInscrito(Boolean(inscripcion));
+    } catch (err) {
+      console.warn('Error al verificar inscripción:', err);
+    }
+  }, [acude?.id, user?.uid]);
 
   useEffect(() => {
-    async function cargarHorarios() {
-      if (!acude?.id) {
-        setCargando(false);
-        return;
-      }
+    verificarEstado();
+  }, [verificarEstado]);
 
-      try {
-        const data = await getHorariosAcude(acude.id);
-        setHorariosData(data);
-      } catch (err) {
-        console.error('Error al cargar cronograma semanal:', err);
-      } finally {
-        setCargando(false);
-      }
+  const cargarHorarios = useCallback(async () => {
+    if (!acude?.id) {
+      setCargando(false);
+      return;
     }
 
-    cargarHorarios();
+    try {
+      const data = await getHorariosAcude(acude.id);
+      setHorariosData(data);
+      if (Array.isArray(data.sesiones) && data.sesiones.length > 0) {
+        setSesionSeleccionada((prev) => prev || data.sesiones[0]);
+      }
+    } catch (err) {
+      console.error('Error al cargar cronograma semanal:', err);
+    } finally {
+      setCargando(false);
+    }
   }, [acude?.id]);
+
+  useEffect(() => {
+    cargarHorarios();
+  }, [cargarHorarios]);
+
+  useEffect(() => {
+    const unsubscribe = navigation?.addListener?.('focus', () => {
+      verificarEstado();
+      cargarHorarios();
+    });
+    return unsubscribe;
+  }, [navigation, verificarEstado, cargarHorarios]);
 
   if (!acude) {
     return (
@@ -72,6 +112,81 @@ export default function HorariosScreen({ route, navigation }) {
   const cuposDisponibles = acude.cuposDisponibles ?? 0;
   const hayCupos = cuposDisponibles > 0;
 
+  // Al seleccionar un día en DateSelector, ajustar la sesión elegida si es relevante
+  const handleSelectDia = (dia) => {
+    if (diaSeleccionado === dia) {
+      setDiaSeleccionado(null);
+    } else {
+      setDiaSeleccionado(dia);
+      const sesionesDelDia = sesiones.filter(
+        (s) => s.dia?.toLowerCase().trim() === dia.toLowerCase().trim()
+      );
+      if (sesionesDelDia.length > 0) {
+        setSesionSeleccionada(sesionesDelDia[0]);
+      }
+    }
+  };
+
+  // Manejador de Matrícula directa con la franja seleccionada
+  const handleInscribirEnHorario = () => {
+    if (!user) {
+      Alert.alert(
+        'Iniciar Sesión',
+        'Debes iniciar sesión para inscribirte a una cátedra ACUDE.'
+      );
+      return;
+    }
+
+    if (!sesionSeleccionada) {
+      Alert.alert('Selecciona un Horario', 'Toca una de las franjas horarias disponibles para elegir tu horario.');
+      return;
+    }
+
+    const diaTexto = sesionSeleccionada.dia;
+    const rangoTexto = `${sesionSeleccionada.horaInicio || '00:00'} - ${sesionSeleccionada.horaFin || '00:00'}`;
+
+    Alert.alert(
+      'Confirmar Matrícula por Horario',
+      `¿Deseas matricularte en "${acude.nombre}"?\n\n• Horario elegido: ${diaTexto} de ${rangoTexto}\n• Espacio: ${sesionSeleccionada.lugar || acude.ubicacion}\n• Docente: ${acude.docente}\n\n⚠️ Recuerda: 80% de asistencia mínima obligatoria para acreditar el taller.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Sí, Confirmar Matrícula',
+          onPress: async () => {
+            try {
+              setInscribiendo(true);
+              const respuesta = await inscribirEstudiante(acude.id, user.uid, {
+                email: user.email,
+                nombre: user.displayName,
+                horarioSeleccionado: sesionSeleccionada,
+                diaSeleccionado: diaTexto,
+                franjaSeleccionada: rangoTexto,
+              });
+
+              setEstaInscrito(true);
+
+              Alert.alert(
+                '¡Matrícula Exitosa!',
+                respuesta.mensaje || `Te has inscrito formalmente en los ${diaTexto} (${rangoTexto}).`,
+                [
+                  {
+                    text: 'Ver Mis Cátedras',
+                    onPress: () => navigation.navigate('MisInscripcionesTab'),
+                  },
+                  { text: 'Aceptar', style: 'default' },
+                ]
+              );
+            } catch (err) {
+              Alert.alert('No fue posible inscribirte', err.message);
+            } finally {
+              setInscribiendo(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.contenedor}>
       <ScrollView contentContainerStyle={styles.scroll}>
@@ -90,12 +205,12 @@ export default function HorariosScreen({ route, navigation }) {
           </View>
 
           <View style={styles.filaInfoCabecera}>
-            <Text style={styles.iconoInfo}>👨‍🏫</Text>
+            <Ionicons name="person-outline" size={15} color={COLORES.verdePino} style={styles.iconoInfo} />
             <Text style={styles.textoDocente}>{acude.docente}</Text>
           </View>
 
           <View style={styles.filaInfoCabecera}>
-            <Text style={styles.iconoInfo}>📍</Text>
+            <Ionicons name="location-outline" size={15} color={COLORES.grisNeutro} style={styles.iconoInfo} />
             <Text style={styles.textoUbicacion}>{acude.ubicacion}</Text>
           </View>
         </View>
@@ -104,29 +219,84 @@ export default function HorariosScreen({ route, navigation }) {
         <DateSelector
           diasActivos={diasActivos}
           diaSeleccionado={diaSeleccionado}
-          onSelectDia={(dia) => {
-            // Alternar selección de filtro por día
-            setDiaSeleccionado(dia === diaSeleccionado ? null : dia);
-          }}
+          onSelectDia={handleSelectDia}
         />
 
-        {/* Componente SlotPicker: Desglose de franjas y sesiones fijas */}
+        {/* Componente SlotPicker: Desglose interactivo con selección de franja */}
         {cargando ? (
           <View style={styles.centroCarga}>
-            <ActivityIndicator size="small" color="#0284C7" />
+            <ActivityIndicator size="small" color={COLORES.verdePino} />
             <Text style={styles.textoCargando}>Cargando franjas horarias...</Text>
           </View>
         ) : (
           <SlotPicker
             sesiones={sesiones}
             diaFiltro={diaSeleccionado}
+            sesionSeleccionada={sesionSeleccionada}
+            onSelectSesion={(sesion) => setSesionSeleccionada(sesion)}
+            onLimpiarFiltroDia={() => setDiaSeleccionado(null)}
           />
         )}
+
+        {/* Módulo de Acción: Matrícula Directa en el Horario Seleccionado */}
+        {estaInscrito ? (
+          <View style={styles.cajaYaInscrito}>
+            <View style={styles.filaYaInscrito}>
+              <Ionicons name="checkmark-circle" size={20} color={COLORES.verdePino} style={{ marginRight: 8 }} />
+              <Text style={styles.textoYaInscrito}>
+                Ya tienes una matrícula activa en esta cátedra ACUDE
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.botonVerInscripciones}
+              onPress={() => navigation.navigate('MisInscripcionesTab')}
+            >
+              <Text style={styles.textoBotonVerInscripciones}>
+                Ver mis cátedras matriculadas →
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : hayCupos ? (
+          <View style={styles.cajaAccionMatricula}>
+            <View style={styles.filaResumenSeleccion}>
+              <Ionicons name="time" size={18} color={COLORES.verdePino} style={{ marginRight: 8 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.labelFranjaElegida}>Franja seleccionada para tu matrícula:</Text>
+                <Text style={styles.valorFranjaElegida}>
+                  {sesionSeleccionada
+                    ? `${sesionSeleccionada.dia} · ${sesionSeleccionada.horaInicio} a ${sesionSeleccionada.horaFin}`
+                    : 'Toca una de las franjas arriba'}
+                </Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={[
+                styles.botonConfirmarMatricula,
+                (!sesionSeleccionada || inscribiendo) && styles.botonDeshabilitado,
+              ]}
+              onPress={handleInscribirEnHorario}
+              disabled={!sesionSeleccionada || inscribiendo}
+              activeOpacity={0.85}
+            >
+              {inscribiendo ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <View style={styles.filaBotonTexto}>
+                  <Ionicons name="checkmark-done-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+                  <Text style={styles.textoBotonConfirmarMatricula}>
+                    Matricularme en esta Franja
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+        ) : null}
 
         {/* Banner de Sobrecupo Presencial Directo con el Docente */}
         <View style={styles.panelSobrecupo}>
           <View style={styles.filaTituloSobrecupo}>
-            <Text style={styles.iconoSobrecupo}>⚠️</Text>
+            <Ionicons name="information-circle" size={20} color="#92400E" style={styles.iconoSobrecupo} />
             <Text style={styles.tituloSobrecupo}>
               Guía de Sobrecupo Presencial en Campus
             </Text>
@@ -155,8 +325,10 @@ export default function HorariosScreen({ route, navigation }) {
           <TouchableOpacity
             style={styles.botonVolver}
             onPress={() => navigation.goBack()}
+            activeOpacity={0.85}
           >
-            <Text style={styles.textoBotonVolver}>← Volver a Ficha Técnica</Text>
+            <Ionicons name="arrow-back" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+            <Text style={styles.textoBotonVolver}>Volver a Ficha Técnica</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -167,24 +339,20 @@ export default function HorariosScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   contenedor: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: COLORES.fondo,
   },
   scroll: {
     padding: 16,
     paddingBottom: 32,
   },
   tarjetaCabecera: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORES.superficie,
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: COLORES.borde,
     marginBottom: 10,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
+    ...SOMBRAS.suave,
   },
   filaEncabezado: {
     flexDirection: 'row',
@@ -198,7 +366,7 @@ const styles = StyleSheet.create({
   },
   subtituloCampus: {
     fontSize: 11,
-    color: '#0284C7',
+    color: COLORES.verdePino,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -207,26 +375,25 @@ const styles = StyleSheet.create({
   tituloCatedra: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#0F172A',
+    color: COLORES.negroInstitucional,
     lineHeight: 23,
   },
   filaInfoCabecera: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 5,
   },
   iconoInfo: {
-    fontSize: 13,
-    marginRight: 6,
+    marginRight: 7,
   },
   textoDocente: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#334155',
+    color: COLORES.negroInstitucional,
   },
   textoUbicacion: {
     fontSize: 12,
-    color: '#64748B',
+    color: COLORES.grisNeutro,
     flex: 1,
   },
   centroCarga: {
@@ -236,8 +403,84 @@ const styles = StyleSheet.create({
   },
   textoCargando: {
     fontSize: 13,
-    color: '#64748B',
+    color: COLORES.grisNeutro,
     marginTop: 6,
+  },
+  cajaAccionMatricula: {
+    backgroundColor: COLORES.superficie,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1.5,
+    borderColor: '#CBE58B',
+    marginVertical: 10,
+    ...SOMBRAS.suave,
+  },
+  filaResumenSeleccion: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    backgroundColor: COLORES.acentoClaro,
+    padding: 10,
+    borderRadius: 10,
+  },
+  labelFranjaElegida: {
+    fontSize: 11,
+    color: '#4F6C0C',
+    fontWeight: '600',
+  },
+  valorFranjaElegida: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORES.verdePino,
+    marginTop: 1,
+  },
+  botonConfirmarMatricula: {
+    backgroundColor: COLORES.verdePino,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...SOMBRAS.boton,
+  },
+  botonDeshabilitado: {
+    backgroundColor: '#9E9E9E',
+  },
+  filaBotonTexto: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  textoBotonConfirmarMatricula: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  cajaYaInscrito: {
+    backgroundColor: COLORES.exitoFondo,
+    borderWidth: 1,
+    borderColor: '#B8DECA',
+    borderRadius: 14,
+    padding: 14,
+    marginVertical: 10,
+    alignItems: 'center',
+  },
+  filaYaInscrito: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  textoYaInscrito: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORES.verdePino,
+    flex: 1,
+  },
+  botonVerInscripciones: {
+    paddingVertical: 4,
+  },
+  textoBotonVerInscripciones: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORES.verdePino,
   },
   panelSobrecupo: {
     backgroundColor: '#FFFBEB',
@@ -253,7 +496,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   iconoSobrecupo: {
-    fontSize: 18,
     marginRight: 8,
   },
   tituloSobrecupo: {
@@ -289,15 +531,13 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   botonVolver: {
-    backgroundColor: '#0284C7',
+    flexDirection: 'row',
+    backgroundColor: COLORES.verdePino,
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
-    shadowColor: '#0284C7',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 2,
+    justifyContent: 'center',
+    ...SOMBRAS.boton,
   },
   textoBotonVolver: {
     color: '#FFFFFF',
@@ -312,7 +552,7 @@ const styles = StyleSheet.create({
   },
   textoError: {
     fontSize: 14,
-    color: '#64748B',
+    color: COLORES.grisNeutro,
     marginBottom: 16,
   },
 });

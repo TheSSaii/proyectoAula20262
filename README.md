@@ -157,6 +157,19 @@ Documento generado mediante transacción atómica que vincula al estudiante con 
   "fechaInscripcion": "2026-09-08 22:30:00",
   "asistenciaMinima": "80% de asistencia obligatoria"
 }
+### Colección: `users`
+Perfil institucional del estudiante en Firestore (vinculado con su UID de Firebase Auth, sin exponer contraseñas):
+```json
+{
+  "uid": "uid_estudiante_firebase_auth",
+  "email": "estudiante@tdea.edu.co",
+  "nombre": "Juan Pérez",
+  "rol": "estudiante",
+  "institucion": "Tecnológico de Antioquia",
+  "sede": "Campus Robledo",
+  "creadoEn": "Timestamp",
+  "actualizadoEn": "Timestamp"
+}
 ```
 
 ---
@@ -216,42 +229,49 @@ Respuestas técnicas y de arquitectura para responder a preguntas de evaluación
 
 ## 🐛 Registro de Errores y Mejoras Pendientes (Bug Tracking)
 
-A continuación se documentan los errores reportados durante las pruebas de usuario (QA) extraídos de la revisión en video. Estos problemas deben solucionarse para garantizar la estabilidad de la aplicación y una correcta experiencia de usuario.
-
-### 🚨 1. Errores Críticos y de Base de Datos (Firebase)
-*   **Crash por Transacción al Cancelar Inscripción:**
-    *   **Descripción:** Al intentar liberar un cupo (cancelar inscripción), la aplicación arroja un error en la consola de Firebase: `Firestore transactions require all reads to be executed before all writes`.
-    *   **Solución Esperada:** Refactorizar el código de la transacción para asegurar que todas las operaciones de lectura se ejecuten antes de cualquier operación de escritura.
-*   **Gestión y Seguridad de Usuarios en Firestore:**
-    *   **Descripción:** Es obligatorio que la gestión de identidades sea segura. 
-    *   **Solución Esperada:** Asegurar que los usuarios registrados se visualicen correctamente en la colección correspondiente de la base de datos en Firestore, y garantizar que **las contraseñas estén obligatoriamente encriptadas**.
+A continuación se documentan los errores reportados durante las pruebas de usuario (QA) extraídos de la revisión en video y su correspondiente resolución técnica:
 
 ### ⚙️ 2. Errores de Lógica de Negocio y Flujo de Inscripción
-*   **Desacople en la Selección del Día/Horario:**
-    *   **Descripción:** Al ingresar a la ficha de horarios de una cátedra, el sistema pide confirmar la inscripción, pero no permite al usuario elegir a qué horario específico desea matricularse.
-    *   **Impacto:** Si un usuario selecciona un horario específico en el cronograma (por ejemplo, el Miércoles) y se inscribe, el sistema ignora su elección y lo inscribe automáticamente en el primer horario disponible (ej. Lunes).
-    *   **Solución Esperada:** El payload de la inscripción debe capturar y enviar el ID del día y la franja horaria que el usuario realmente seleccionó.
-*   **Incapacidad de Inscripción en Días Específicos:**
-    *   **Descripción:** Al intentar hacer tap sobre ciertos días (como el Viernes en algunas cátedras), la interfaz no responde ni permite avanzar con el proceso de matrícula.
+*   **Desacople en la Selección del Día/Horario:** `[RESUELTO]`
+    *   **Descripción:** Al ingresar a la ficha de horarios de una cátedra, el sistema pedía confirmar la inscripción, pero no permitía al usuario elegir a qué horario específico deseaba matricularse.
+    *   **Impacto:** Si un usuario seleccionaba un horario específico en el cronograma (por ejemplo, el Miércoles) y se inscribía, el sistema ignoraba su elección y lo inscribía automáticamente en el primer horario disponible (ej. Lunes).
+    *   **Solución Aplicada:** 
+        - En `services/inscripcionesService.js`, la función `inscribirEstudiante` ahora recibe `horarioSeleccionado`, `diaSeleccionado` y `franjaSeleccionada` en el payload de metadatos, guardándolos atómicamente en el documento de la colección `inscripciones` (`diaSeleccionado`, `franjaSeleccionada`, `lugarSesion`).
+        - En `screens/HorariosScreen.js` y `screens/DetalleScreen.js`, se añadieron selectores interactivos de franjas horarias con feedback visual (`radio/checkmark`), enviando el horario explícito seleccionado por el estudiante.
+        - En `screens/MisInscripcionesScreen.js`, la tarjeta de inscripción ahora resalta de forma destacada el día y franja matriculada por el estudiante.
+*   **Incapacidad de Inscripción en Días Específicos (ej. Viernes):** `[RESUELTO]`
+    *   **Descripción:** Al intentar hacer tap sobre ciertos días (como el Viernes en algunas cátedras), la interfaz no respondía ni permitía avanzar con el proceso de matrícula.
+    *   **Solución Aplicada:**
+        - En `components/DateSelector.js`, se removió la propiedad `disabled` que bloqueaba el evento `onPress` en los días sin coincidencia previa o en días específicos de fin de semana, permitiendo siempre la navegación fluida entre días.
+        - En `components/SlotPicker.js`, se implementó la interacción táctil con `onSelectSesion` y una vista informativa con botón para "Ver todos los horarios de la cátedra" cuando el día filtrado no contiene franjas.
 
 ### 🔍 3. Errores en Filtros y Búsqueda
-*   **Buscador Sensible a Tildes (Diacríticos):**
-    *   **Descripción:** Si un usuario busca el término "Futbol" (sin tilde), el buscador arroja 0 resultados. Solo funciona si se busca "Fútbol" (con tilde).
-    *   **Solución Esperada:** Implementar una normalización de texto en la función de búsqueda para que ignore las tildes y mejore la usabilidad.
-*   **Clasificación Errónea en Filtros de Categorías:**
-    *   **Descripción:** Al presionar el filtro de actividades "Culturales", la cátedra de "Danza Folclórica" no aparece en la lista, a pesar de tener la etiqueta visual de "Cultural". Sin embargo, otras cátedras como "Teatro" sí aparecen correctamente.
-    *   **Solución Esperada:** Revisar la metadata o el tag asignado a "Danza Folclórica" en la base de datos para que el filtro lo reconozca.
+*   **Buscador Sensible a Tildes (Diacríticos):** `[RESUELTO]`
+    *   **Descripción:** Si un usuario buscaba el término "Futbol" (sin tilde), el buscador arrojaba 0 resultados. Solo funcionaba si se buscaba "Fútbol" (con tilde).
+    *   **Solución Aplicada:** En `screens/InicioScreen.js`, se implementó la función de utilidad `normalizarTexto(cadena)` que utiliza `.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()`. Se normalizan en tiempo real tanto el texto escrito por el usuario como los campos `nombre`, `docente`, `disciplina`, `ubicacion` y `categoria` de cada cátedra. De esta forma, "futbol" encuentra "Fútbol Sala", "danza" encuentra "Danza Folclórica", etc.
+*   **Clasificación Errónea en Filtros de Categorías ("Danza Folclórica"):** `[RESUELTO]`
+    *   **Descripción:** Al presionar el filtro de actividades "Culturales", la cátedra de "Danza Folclórica" no aparecía en la lista, a pesar de tener la etiqueta visual de "Cultural". Sin embargo, otras cátedras como "Teatro" sí aparecían correctamente.
+    *   **Solución Aplicada:** En `screens/InicioScreen.js`, el filtrado por categorías fue desacoplado de coincidencias estrictas de cadenas (`===`). Ahora evalúa si la categoría normalizada contiene la raíz semántica (`catNormalizada.includes('cultur')` para Culturales y `catNormalizada.includes('deport')` para Deportivas), garantizando que "Danza Folclórica" y "Teatro" se listen siempre bajo la categoría "Culturales".
 
 ### 📱 4. UI/UX (Interfaz y Experiencia de Usuario)
-*   **Problemas con el Hitbox (Área Táctil) en la Navegación Inferior:**
-    *   **Descripción:** En algunos dispositivos móviles, el área táctil de los iconos del menú de navegación inferior está desfasada. El usuario tiene que presionar fuera del icono para que el botón funcione.
-    *   **Solución Esperada:** Ajustar el padding/margin y el área del componente `Pressable` o `Touchable` en el `BottomTabNavigator`.
-*   **Botón de Ficha de Inscripción Inactivo:**
-    *   **Descripción:** En la vista principal del cronograma, el componente visual que debería funcionar como ficha de inscripción no ejecuta ninguna acción al ser presionado.
+*   **Problemas con el Hitbox (Área Táctil) en la Navegación Inferior:** `[RESUELTO]`
+    *   **Descripción:** En algunos dispositivos móviles, el área táctil de los iconos del menú de navegación inferior estaba desfasada. El usuario tenía que presionar fuera del icono para que el botón funcionara.
+    *   **Solución Aplicada:** En `navigation/Tabs.js`, se añadió la propiedad `tabBarItemStyle: { justifyContent: 'center', alignItems: 'center', paddingVertical: 4 }` y se recalibraron los paddings verticales de `tabBarStyle` (`paddingTop: 6`, `paddingBottom: Platform.OS === 'ios' ? 24 : 8`). Esto centra de forma precisa el área táctil de cada pestaña sobre el icono y la etiqueta, asegurando una respuesta táctil inmediata en toda la superficie.
+*   **Botón de Ficha de Inscripción Inactivo en Cronograma:** `[RESUELTO]`
+    *   **Descripción:** En la vista principal del cronograma (`HorariosScreen.js`), el componente visual de sesión no permitía ejecutar la matrícula directamente.
+    *   **Solución Aplicada:** En `components/SlotPicker.js` y `screens/HorariosScreen.js`, se transformó cada franja horaria en un elemento interactivo que selecciona la sesión (`sesionSeleccionada`) y activa un contenedor de matrícula contextual con el botón "Matricularme en esta Franja" (con confirmación del 80% de asistencia mínima y verificación de aforo/estado previo).
 
 ### ❓ 5. Dudas de Arquitectura por Aclarar
+<<<<<<< HEAD
 *   **Botón "Sincronizar Catálogo ACUDE (Bloque 10)":**
     *   **Descripción:** El comportamiento de este botón en el perfil del usuario no es claro. 
     *   **Acción Requerida:** Documentar qué hace exactamente este proceso por debajo (¿Actualiza la base de datos local? ¿Hace un fetch a Firestore?) para entender cómo se evidencia esta acción a nivel de base de datos.
 
 ### LOS ERRORES SON IGUALES EN IOS Y EN ANDROID
+=======
+*   **Botón "Sincronizar Catálogo ACUDE en Firestore":** `[ACLARADO Y DOCUMENTADO]`
+    *   **Descripción y Funcionamiento Técnico:**
+        - **¿Qué hace por debajo?**: Ejecuta la función `ejecutarSeedAcudes()` (`services/seedAcudes.js`), la cual se conecta directamente con **Google Cloud Firestore**.
+        - **Proceso de base de datos**: Realiza un lote de escrituras utilizando `setDoc(doc(db, 'acudes', acude.id), datos, { merge: true })`. Al utilizar identificadores deterministas fijos (`acude-futsal`, `acude-danza-folclorica`, `acude-voleibol`, `acude-teatro-expresion`, etc.) y la opción `{ merge: true }`, la operación es **completamente idempotente**: no duplica documentos en caso de múltiples pulsaciones, crea las cátedras si la colección no existe y actualiza campos institucionales (aforos, requisitos, docentes, horarios y marcas de tiempo `serverTimestamp()`) preservando el estado de la base de datos.
+        - **Mejora en UI:** En `screens/PerfilScreen.js`, se agregó un subtítulo explícito debajo del botón indicando al usuario y a los evaluadores que se trata de un proceso de inicialización e hidratación remota en Cloud Firestore para el Bloque 10.
+>>>>>>> entrega1

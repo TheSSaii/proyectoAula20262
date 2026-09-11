@@ -2,13 +2,14 @@
  * @file DateSelector.js
  * @description Componente visual interactivo para visualizar los días fijos de encuentro semanal
  * de una cátedra ACUDE (Lunes a Sábado).
- * Resalta los días específicos de clase para que el estudiante evalúe de un vistazo
- * si existen cruces de horario con sus materias académicas de Campus TdeA.
+ * Resalta los días específicos de clase con la paleta institucional TdeA (Verde Pino, Verde Lima, Gris Neutro).
  * @module components/DateSelector
  */
 
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { COLORES, SOMBRAS } from '../constants/theme';
 
 const DIAS_SEMANA = [
   { clave: 'Lunes', abreviatura: 'Lun', nombreCompleto: 'Lunes' },
@@ -19,9 +20,6 @@ const DIAS_SEMANA = [
   { clave: 'Sábado', abreviatura: 'Sáb', nombreCompleto: 'Sábado' },
 ];
 
-/**
- * Normaliza nombres de días (remueve tildes y mayúsculas) para comparaciones seguras.
- */
 function normalizarTexto(txt = '') {
   return txt
     .toLowerCase()
@@ -30,16 +28,6 @@ function normalizarTexto(txt = '') {
     .trim();
 }
 
-/**
- * Componente DateSelector adaptado a la agenda semanal de cátedras ACUDE.
- *
- * @param {Object} props
- * @param {Array<string>} [props.diasActivos=[]] - Días de la semana en los que sesiona el taller (ej. ['Martes', 'Jueves']).
- * @param {string} [props.diaSeleccionado=null] - Día actualmente seleccionado para filtrar/inspeccionar.
- * @param {Function} [props.onSelectDia] - Callback ejecutado al pulsar un día.
- * @param {object} [props.style]
- * @returns {React.JSX.Element}
- */
 export default function DateSelector({
   diasActivos = [],
   diaSeleccionado = null,
@@ -51,7 +39,10 @@ export default function DateSelector({
   return (
     <View style={[styles.contenedor, style]}>
       <View style={styles.encabezado}>
-        <Text style={styles.titulo}>📅 Días de Encuentro Semanal</Text>
+        <View style={styles.filaTitulo}>
+          <Ionicons name="calendar-outline" size={18} color={COLORES.verdePino} style={{ marginRight: 6 }} />
+          <Text style={styles.titulo}>Días de Encuentro Semanal</Text>
+        </View>
         <Text style={styles.subtitulo}>
           Verifica que no colisione con tu horario de clases en Campus TdeA
         </Text>
@@ -67,8 +58,7 @@ export default function DateSelector({
           return (
             <TouchableOpacity
               key={item.clave}
-              activeOpacity={tieneClase ? 0.75 : 1}
-              disabled={!tieneClase && !onSelectDia}
+              activeOpacity={0.7}
               onPress={() => {
                 if (typeof onSelectDia === 'function') {
                   onSelectDia(item.clave);
@@ -121,24 +111,29 @@ export default function DateSelector({
 
 const styles = StyleSheet.create({
   contenedor: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORES.superficie,
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: COLORES.borde,
     marginVertical: 8,
+    ...SOMBRAS.suave,
   },
   encabezado: {
     marginBottom: 14,
   },
+  filaTitulo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   titulo: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#0F172A',
+    color: COLORES.negroInstitucional,
   },
   subtitulo: {
     fontSize: 12,
-    color: '#64748B',
+    color: COLORES.grisNeutro,
     marginTop: 2,
   },
   filaDias: {
@@ -151,26 +146,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderRadius: 12,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: COLORES.superficieGris,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: COLORES.borde,
   },
   cajaDiaActivo: {
-    backgroundColor: '#E0F2FE',
-    borderColor: '#BAE6FD',
+    backgroundColor: COLORES.acentoClaro,
+    borderColor: '#CBE58B',
   },
   cajaDiaSeleccionado: {
-    backgroundColor: '#0284C7',
-    borderColor: '#0284C7',
+    backgroundColor: COLORES.verdePino,
+    borderColor: COLORES.verdePino,
   },
   textoAbreviatura: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#94A3B8',
+    color: '#9E9E9E',
     marginBottom: 4,
   },
   textoAbreviaturaActiva: {
-    color: '#0369A1',
+    color: COLORES.verdePino,
     fontWeight: '700',
   },
   textoAbreviaturaSeleccionada: {
@@ -180,14 +175,14 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#0284C7',
+    backgroundColor: COLORES.verdeLima,
   },
   puntoSesionSeleccionado: {
     backgroundColor: '#FFFFFF',
   },
   textoLibre: {
     fontSize: 10,
-    color: '#CBD5E1',
+    color: '#C5C5C5',
   },
   leyenda: {
     flexDirection: 'row',
@@ -196,7 +191,7 @@ const styles = StyleSheet.create({
     marginTop: 14,
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    borderTopColor: COLORES.borde,
   },
   itemLeyenda: {
     flexDirection: 'row',
@@ -209,13 +204,13 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   muestraActiva: {
-    backgroundColor: '#0284C7',
+    backgroundColor: COLORES.verdeLima,
   },
   muestraInactiva: {
-    backgroundColor: '#CBD5E1',
+    backgroundColor: '#C5C5C5',
   },
   textoLeyenda: {
     fontSize: 11,
-    color: '#64748B',
+    color: COLORES.grisNeutro,
   },
 });

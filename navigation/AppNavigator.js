@@ -2,9 +2,10 @@
  * @file AppNavigator.js
  * @description Enrutador raíz de la aplicación CanchaYa.
  * Evalúa el estado reactivo del usuario en AuthContexto para aplicar
- * enrutamiento condicional estricto:
+ * enrutamiento condicional:
  * - Si no hay sesión: renderiza AuthStack (Login / Registro).
- * - Si hay sesión activa: renderiza Tabs (Escenarios, Mis Reservas, Perfil).
+ * - Si hay sesión activa: renderiza Tabs (Cátedras ACUDE, Mis Cátedras, Perfil).
+ * Incluye pantalla de carga institucional con el logo oficial y paleta TdeA.
  * @module navigation/AppNavigator
  */
 
@@ -13,6 +14,8 @@ import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
 import { useAuth } from '../contexts/AuthContexto';
 import AuthStack from './AuthStack';
 import Tabs from './Tabs';
+import LogoInstitucional from '../components/LogoInstitucional';
+import { COLORES } from '../constants/theme';
 
 export default function AppNavigator() {
   const { user, loading } = useAuth();
@@ -21,11 +24,11 @@ export default function AppNavigator() {
   if (loading) {
     return (
       <View style={styles.pantallaCarga}>
-        <View style={styles.circuloLogo}>
-          <Text style={styles.iconoLogo}>🏟️</Text>
-        </View>
-        <ActivityIndicator size="large" color="#0284C7" style={styles.spinner} />
-        <Text style={styles.textoCargando}>Iniciando CanchaYa...</Text>
+        <LogoInstitucional size={96} redondeado conSombra />
+        <Text style={styles.tituloApp}>CanchaYa</Text>
+        <Text style={styles.subtituloApp}>Tecnológico de Antioquia</Text>
+        <ActivityIndicator size="large" color={COLORES.verdePino} style={styles.spinner} />
+        <Text style={styles.textoCargando}>Cargando plataforma...</Text>
       </View>
     );
   }
@@ -37,33 +40,33 @@ export default function AppNavigator() {
 const styles = StyleSheet.create({
   pantallaCarga: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: COLORES.fondo,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 24,
   },
-  circuloLogo: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#0284C7',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
-    shadowColor: '#0284C7',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
+  tituloApp: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: COLORES.negroInstitucional,
+    marginTop: 18,
+    letterSpacing: -0.5,
   },
-  iconoLogo: {
-    fontSize: 38,
+  subtituloApp: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORES.verdePino,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginTop: 4,
+    marginBottom: 24,
   },
   spinner: {
-    marginBottom: 12,
+    marginBottom: 10,
   },
   textoCargando: {
-    fontSize: 14,
-    color: '#64748B',
+    fontSize: 13,
+    color: COLORES.grisNeutro,
     fontWeight: '500',
   },
 });

@@ -9,63 +9,65 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
+import { COLORES } from '../constants/theme';
+
 /**
  * Paleta semántica para estados y etiquetas de Cátedras ACUDE.
- * Cada clave contiene color de fondo, texto y borde para mantener coherencia visual.
+ * Alineada a la identidad oficial TdeA (Verde Pino, Verde Lima, Gris Neutro y Negro Institucional).
  */
 const PALETA_ESTADOS = {
   disponible: {
-    fondo: '#E8F5E9',
-    texto: '#1B5E20',
-    borde: '#C8E6C9',
+    fondo: COLORES.exitoFondo,
+    texto: COLORES.verdePino,
+    borde: '#B8DECA',
     labelPorDefecto: 'Cupos disponibles',
   },
   agotado: {
-    fondo: '#FFF3E0',
-    texto: '#D84315',
-    borde: '#FFE0B2',
-    labelPorDefecto: 'Agotado (Ver sobrecupo)',
+    fondo: COLORES.alertaFondo,
+    texto: COLORES.alerta,
+    borde: '#FDE68A',
+    labelPorDefecto: 'Agotado (Sobrecupo)',
   },
   inscrito: {
-    fondo: '#E0F2FE',
-    texto: '#0369A1',
-    borde: '#BAE6FD',
+    fondo: COLORES.acentoClaro,
+    texto: '#4F6C0C',
+    borde: '#CBE58B',
     labelPorDefecto: 'Inscrito',
   },
   cultural: {
-    fondo: '#F3E8FF',
-    texto: '#7E22CE',
-    borde: '#E9D5FF',
+    fondo: '#F3F0F7',
+    texto: '#4A3B66',
+    borde: '#DDD6E8',
     labelPorDefecto: 'Cultural',
   },
   deportiva: {
-    fondo: '#ECFDF5',
-    texto: '#047857',
-    borde: '#A7F3D0',
+    fondo: COLORES.exitoFondo,
+    texto: COLORES.verdePino,
+    borde: COLORES.verdeLima,
     labelPorDefecto: 'Deportiva',
   },
   mantenimiento: {
-    fondo: '#FFFBEB',
-    texto: '#B45309',
+    fondo: COLORES.alertaFondo,
+    texto: COLORES.alerta,
     borde: '#FDE68A',
     labelPorDefecto: 'Mantenimiento',
   },
   cancelado: {
-    fondo: '#FEF2F2',
-    texto: '#B91C1C',
+    fondo: COLORES.errorFondo,
+    texto: COLORES.error,
     borde: '#FECACA',
     labelPorDefecto: 'Cancelada',
   },
   info: {
-    fondo: '#F0F9FF',
-    texto: '#0284C7',
-    borde: '#BAE6FD',
+    fondo: '#F0F4F1',
+    texto: COLORES.verdePino,
+    borde: '#C9DCCB',
     labelPorDefecto: 'Info',
   },
   default: {
-    fondo: '#F1F5F9',
-    texto: '#475569',
-    borde: '#E2E8F0',
+    fondo: '#F5F7F5',
+    texto: COLORES.grisNeutro,
+    borde: COLORES.borde,
     labelPorDefecto: 'General',
   },
 };
