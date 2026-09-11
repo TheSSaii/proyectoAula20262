@@ -23,15 +23,46 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContexto';
 import Badge from '../components/Badge';
 import { ejecutarSeedAcudes } from '../services/seedAcudes';
+import { actualizarPerfilUsuario } from '../services/userService';
 import { COLORES, SOMBRAS } from '../constants/theme';
 
 export default function PerfilScreen() {
-  const { user, perfil, logout } = useAuth();
+  const { user, perfil, logout, recargarPerfil } = useAuth();
   const [saliendo, setSaliendo] = useState(false);
   const [sembrando, setSembrando] = useState(false);
 
   const nombreMostrado = perfil?.nombre || user?.displayName || 'Estudiante TdeA';
   const rolMostrado = perfil?.rol ? perfil.rol.toUpperCase() : 'ESTUDIANTE';
+  const sedeActual = perfil?.sede?.toLowerCase().includes('itag')
+    ? 'Campus Itagüí'
+    : 'Campus Robledo';
+  const esItagui = sedeActual === 'Campus Itagüí';
+
+  const handleCambiarCampus = () => {
+    Alert.alert(
+      'Cambiar Sede Institucional',
+      `Sede actual: ${sedeActual}\n\nSelecciona el campus donde estudias habitualmente:`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: esItagui ? 'Cambiar a Campus Robledo' : 'Cambiar a Campus Itagüí',
+          onPress: async () => {
+            if (!user?.uid) return;
+            try {
+              const nuevaSede = esItagui ? 'Campus Robledo' : 'Campus Itagüí';
+              await actualizarPerfilUsuario(user.uid, { sede: nuevaSede });
+              if (recargarPerfil) {
+                await recargarPerfil();
+              }
+              Alert.alert('Sede Actualizada', `Tu campus ahora es ${nuevaSede}.`);
+            } catch (err) {
+              Alert.alert('Error', err.message);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const handleCerrarSesion = () => {
     Alert.alert(
@@ -99,13 +130,20 @@ export default function PerfilScreen() {
 
             <View style={styles.separador} />
 
-            <View style={styles.filaDetalle}>
+            <TouchableOpacity
+              style={styles.filaDetalle}
+              onPress={handleCambiarCampus}
+              activeOpacity={0.7}
+            >
               <View style={styles.filaLabel}>
                 <Ionicons name="location-outline" size={16} color={COLORES.verdePino} style={{ marginRight: 8 }} />
-                <Text style={styles.labelDetalle}>Sede Principal:</Text>
+                <Text style={styles.labelDetalle}>Sede Asignada:</Text>
               </View>
-              <Text style={styles.valorDetalle}>{perfil?.sede || 'Campus Robledo'}</Text>
-            </View>
+              <View style={styles.filaValorConBoton}>
+                <Text style={styles.valorDetalle}>{sedeActual}</Text>
+                <Ionicons name="swap-horizontal" size={16} color={COLORES.verdePino} style={{ marginLeft: 6 }} />
+              </View>
+            </TouchableOpacity>
 
             <View style={styles.separador} />
 
@@ -160,10 +198,15 @@ export default function PerfilScreen() {
             {sembrando ? (
               <ActivityIndicator color={COLORES.verdePino} size="small" />
             ) : (
-              <View style={styles.filaBotonSincronizar}>
-                <Ionicons name="sync-outline" size={18} color={COLORES.verdePino} style={{ marginRight: 8 }} />
-                <Text style={styles.textoBotonSincronizar}>
-                  Sincronizar Catálogo ACUDE (Bloque 10)
+              <View style={styles.columnaBotonSincronizar}>
+                <View style={styles.filaBotonSincronizar}>
+                  <Ionicons name="sync-outline" size={18} color={COLORES.verdePino} style={{ marginRight: 8 }} />
+                  <Text style={styles.textoBotonSincronizar}>
+                    Sincronizar Catálogo ACUDE en Firestore
+                  </Text>
+                </View>
+                <Text style={styles.subtextoBotonSincronizar}>
+                  Carga e inicializa en Cloud Firestore las 6 cátedras oficiales del Bloque 10 con IDs deterministas y actualización idempotente (merge: true).
                 </Text>
               </View>
             )}
@@ -254,6 +297,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  filaValorConBoton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   labelDetalle: {
     fontSize: 13,
     color: COLORES.grisNeutro,
@@ -280,10 +327,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#CBE58B',
     paddingVertical: 14,
+    paddingHorizontal: 14,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
+  },
+  columnaBotonSincronizar: {
+    alignItems: 'center',
   },
   filaBotonSincronizar: {
     flexDirection: 'row',
@@ -293,6 +344,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: COLORES.verdePino,
+  },
+  subtextoBotonSincronizar: {
+    fontSize: 11,
+    color: '#4F6C0C',
+    textAlign: 'center',
+    marginTop: 4,
+    lineHeight: 15,
   },
   botonSalir: {
     width: '100%',

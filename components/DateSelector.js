@@ -58,8 +58,7 @@ export default function DateSelector({
           return (
             <TouchableOpacity
               key={item.clave}
-              activeOpacity={tieneClase ? 0.75 : 1}
-              disabled={!tieneClase && !onSelectDia}
+              activeOpacity={0.7}
               onPress={() => {
                 if (typeof onSelectDia === 'function') {
                   onSelectDia(item.clave);

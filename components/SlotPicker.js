@@ -1,9 +1,10 @@
 /**
  * @file SlotPicker.js
- * @description Componente visual para renderizar las franjas horarias fijas y recurrentes
+ * @description Componente visual interactivo para renderizar las franjas horarias fijas y recurrentes
  * de una cátedra ACUDE.
- * Implementa la paleta de identidad oficial TdeA (Verde Pino, Verde Lima, Gris Neutro, Negro Institucional)
- * e iconografía profesional de Ionicons.
+ * Permite al estudiante seleccionar interactivamente su franja horaria preferida,
+ * resaltando visualmente la sesión elegida con la paleta de identidad oficial TdeA
+ * (Verde Pino, Verde Lima, Gris Neutro, Negro Institucional).
  * @module components/SlotPicker
  */
 
@@ -15,14 +16,18 @@ import { COLORES, SOMBRAS } from '../constants/theme';
 export default function SlotPicker({
   sesiones = [],
   diaFiltro = null,
+  sesionSeleccionada = null,
   onSelectSesion,
+  onLimpiarFiltroDia,
   style,
 }) {
   const sesionesFiltradas = diaFiltro
     ? sesiones.filter(
-        (s) => s.dia?.toLowerCase() === diaFiltro.toLowerCase()
+        (s) => s.dia?.toLowerCase().trim() === diaFiltro.toLowerCase().trim()
       )
     : sesiones;
+
+  const diasConClase = [...new Set(sesiones.map((s) => s.dia))].filter(Boolean);
 
   if (sesiones.length === 0) {
     return (
@@ -42,61 +47,130 @@ export default function SlotPicker({
         <Text style={styles.tituloSeccion}>Franjas y Sesiones Semanales</Text>
       </View>
       <Text style={styles.descripcionSeccion}>
-        Horarios fijos en los que debes asistir en el campus Robledo (Bloque 10):
+        {diaFiltro
+          ? `Mostrando sesiones programadas para los ${diaFiltro}:`
+          : 'Selecciona la franja horaria fija en la que deseas matricularte:'}
       </Text>
 
-      <View style={styles.listaSesiones}>
-        {sesionesFiltradas.map((sesion, index) => {
-          const rangoHora = `${sesion.horaInicio || '00:00'} a ${
-            sesion.horaFin || '00:00'
-          }`;
-
-          return (
+      {/* Si se filtró por un día que no tiene clases */}
+      {sesionesFiltradas.length === 0 ? (
+        <View style={styles.cajaDiaSinSesion}>
+          <Ionicons name="calendar-outline" size={24} color={COLORES.alerta} style={{ marginBottom: 6 }} />
+          <Text style={styles.tituloDiaSinSesion}>
+            Esta cátedra no sesiona los {diaFiltro}
+          </Text>
+          <Text style={styles.textoDiaSinSesion}>
+            Días con clase programada: <Text style={{ fontWeight: '700' }}>{diasConClase.join(', ')}</Text>
+          </Text>
+          {typeof onLimpiarFiltroDia === 'function' && (
             <TouchableOpacity
-              key={sesion.id || `sesion-${index}`}
-              activeOpacity={onSelectSesion ? 0.8 : 1}
-              onPress={() => onSelectSesion && onSelectSesion(sesion)}
-              style={styles.tarjetaSesion}
+              style={styles.botonMostrarTodas}
+              onPress={onLimpiarFiltroDia}
+              activeOpacity={0.8}
             >
-              {/* Columna Izquierda: Día y Hora */}
-              <View style={styles.columnaTiempo}>
-                <View style={styles.badgeDia}>
-                  <Text style={styles.textoBadgeDia}>{sesion.dia}</Text>
-                </View>
-                <Text style={styles.textoHora}>{rangoHora}</Text>
-              </View>
+              <Text style={styles.textoBotonMostrarTodas}>Ver todas las franjas semanales</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      ) : (
+        <View style={styles.listaSesiones}>
+          {sesionesFiltradas.map((sesion, index) => {
+            const rangoHora = `${sesion.horaInicio || '00:00'} a ${
+              sesion.horaFin || '00:00'
+            }`;
 
-              {/* Divisor vertical */}
-              <View style={styles.divisorVertical} />
+            const esSeleccionada =
+              sesionSeleccionada &&
+              (sesionSeleccionada.id === sesion.id ||
+                (sesionSeleccionada.dia === sesion.dia &&
+                  sesionSeleccionada.horaInicio === sesion.horaInicio));
 
-              {/* Columna Derecha: Ubicación y Docente */}
-              <View style={styles.columnaInfo}>
-                <View style={styles.filaInfo}>
-                  <Ionicons name="location-outline" size={14} color={COLORES.grisNeutro} style={styles.iconoDetalle} />
-                  <Text style={styles.textoLugar} numberOfLines={2}>
-                    {sesion.lugar || 'Campus Robledo - Bloque 10'}
-                  </Text>
-                </View>
-
-                {sesion.docente && (
-                  <View style={styles.filaInfo}>
-                    <Ionicons name="person-outline" size={14} color={COLORES.verdePino} style={styles.iconoDetalle} />
-                    <Text style={styles.textoDocente} numberOfLines={1}>
-                      {sesion.docente}
+            return (
+              <TouchableOpacity
+                key={sesion.id || `sesion-${index}`}
+                activeOpacity={0.85}
+                onPress={() => onSelectSesion && onSelectSesion(sesion)}
+                style={[
+                  styles.tarjetaSesion,
+                  esSeleccionada && styles.tarjetaSesionSeleccionada,
+                ]}
+              >
+                {/* Columna Izquierda: Día y Hora */}
+                <View style={styles.columnaTiempo}>
+                  <View
+                    style={[
+                      styles.badgeDia,
+                      esSeleccionada && styles.badgeDiaSeleccionado,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.textoBadgeDia,
+                        esSeleccionada && styles.textoBadgeDiaSeleccionado,
+                      ]}
+                    >
+                      {sesion.dia}
                     </Text>
                   </View>
-                )}
-
-                <View style={styles.tagPresencial}>
-                  <Text style={styles.textoTagPresencial}>
-                    • Asistencia presencial directa
-                  </Text>
+                  <Text style={styles.textoHora}>{rangoHora}</Text>
                 </View>
-              </View>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+
+                {/* Divisor vertical */}
+                <View
+                  style={[
+                    styles.divisorVertical,
+                    esSeleccionada && styles.divisorVerticalSeleccionado,
+                  ]}
+                />
+
+                {/* Columna Derecha: Ubicación, Docente y Acción */}
+                <View style={styles.columnaInfo}>
+                  <View style={styles.filaInfo}>
+                    <Ionicons name="location-outline" size={14} color={COLORES.grisNeutro} style={styles.iconoDetalle} />
+                    <Text style={styles.textoLugar} numberOfLines={2}>
+                      {sesion.lugar || 'Campus Robledo - Bloque 10'}
+                    </Text>
+                  </View>
+
+                  {sesion.docente && (
+                    <View style={styles.filaInfo}>
+                      <Ionicons name="person-outline" size={14} color={COLORES.verdePino} style={styles.iconoDetalle} />
+                      <Text style={styles.textoDocente} numberOfLines={1}>
+                        {sesion.docente}
+                      </Text>
+                    </View>
+                  )}
+
+                  {/* Estado / Botón de Selección interactivo */}
+                  <View
+                    style={[
+                      styles.pildoraSeleccion,
+                      esSeleccionada && styles.pildoraSeleccionActiva,
+                    ]}
+                  >
+                    <Ionicons
+                      name={esSeleccionada ? 'checkmark-circle' : 'radio-button-off'}
+                      size={14}
+                      color={esSeleccionada ? COLORES.verdePino : COLORES.grisNeutro}
+                      style={{ marginRight: 5 }}
+                    />
+                    <Text
+                      style={[
+                        styles.textoPildoraSeleccion,
+                        esSeleccionada && styles.textoPildoraSeleccionActiva,
+                      ]}
+                    >
+                      {esSeleccionada
+                        ? 'Horario seleccionado'
+                        : 'Toca para elegir esta franja'}
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
     </View>
   );
 }
@@ -142,6 +216,40 @@ const styles = StyleSheet.create({
     marginTop: 3,
     marginBottom: 14,
   },
+  cajaDiaSinSesion: {
+    backgroundColor: '#FEF3C7',
+    borderRadius: 12,
+    padding: 14,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  tituloDiaSinSesion: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#92400E',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  textoDiaSinSesion: {
+    fontSize: 12,
+    color: '#78350F',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  botonMostrarTodas: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#D97706',
+  },
+  textoBotonMostrarTodas: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#92400E',
+  },
   listaSesiones: {
     gap: 10,
   },
@@ -151,26 +259,38 @@ const styles = StyleSheet.create({
     backgroundColor: COLORES.superficieGris,
     borderRadius: 12,
     padding: 12,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: COLORES.borde,
+  },
+  tarjetaSesionSeleccionada: {
+    backgroundColor: COLORES.acentoClaro,
+    borderColor: COLORES.verdePino,
+    ...SOMBRAS.suave,
   },
   columnaTiempo: {
     width: 105,
     alignItems: 'flex-start',
   },
   badgeDia: {
-    backgroundColor: COLORES.acentoClaro,
+    backgroundColor: '#E5E9E5',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
     marginBottom: 4,
     borderWidth: 1,
-    borderColor: '#CBE58B',
+    borderColor: COLORES.borde,
+  },
+  badgeDiaSeleccionado: {
+    backgroundColor: COLORES.verdePino,
+    borderColor: COLORES.verdePino,
   },
   textoBadgeDia: {
     fontSize: 12,
     fontWeight: '700',
-    color: COLORES.verdePino,
+    color: COLORES.negroInstitucional,
+  },
+  textoBadgeDiaSeleccionado: {
+    color: '#FFFFFF',
   },
   textoHora: {
     fontSize: 12,
@@ -179,9 +299,12 @@ const styles = StyleSheet.create({
   },
   divisorVertical: {
     width: 1,
-    height: '80%',
+    height: '85%',
     backgroundColor: COLORES.borde,
     marginHorizontal: 12,
+  },
+  divisorVerticalSeleccionado: {
+    backgroundColor: '#CBE58B',
   },
   columnaInfo: {
     flex: 1,
@@ -205,12 +328,29 @@ const styles = StyleSheet.create({
     color: COLORES.grisNeutro,
     flex: 1,
   },
-  tagPresencial: {
-    marginTop: 2,
+  pildoraSeleccion: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORES.borde,
+    marginTop: 4,
   },
-  textoTagPresencial: {
-    fontSize: 10,
-    color: COLORES.verdePino,
+  pildoraSeleccionActiva: {
+    backgroundColor: '#FFFFFF',
+    borderColor: COLORES.verdePino,
+  },
+  textoPildoraSeleccion: {
+    fontSize: 11,
     fontWeight: '600',
+    color: COLORES.grisNeutro,
+  },
+  textoPildoraSeleccionActiva: {
+    color: COLORES.verdePino,
+    fontWeight: '700',
   },
 });

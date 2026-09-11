@@ -24,6 +24,7 @@ import {
   Platform,
   Alert,
   Animated,
+  FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AcudeCard from '../components/AcudeCard';
@@ -31,8 +32,20 @@ import Badge from '../components/Badge';
 import LogoInstitucional from '../components/LogoInstitucional';
 import { getAcudes } from '../services/acudesService';
 import { ejecutarSeedAcudes } from '../services/seedAcudes';
+import { actualizarPerfilUsuario } from '../services/userService';
 import { useAuth } from '../contexts/AuthContexto';
 import { COLORES, SOMBRAS } from '../constants/theme';
+
+/**
+ * Normaliza cadenas removiendo tildes, diacríticos y espacios para búsquedas robustas.
+ */
+function normalizarTexto(txt = '') {
+  return String(txt || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+}
 
 const CATEGORIAS_FILTRO = [
   { clave: 'Todos', label: 'Todas las Cátedras', icono: 'layers-outline' },
@@ -41,7 +54,7 @@ const CATEGORIAS_FILTRO = [
 ];
 
 export default function InicioScreen({ navigation }) {
-  const { user, perfil } = useAuth();
+  const { user, perfil, recargarPerfil } = useAuth();
 
   const [acudes, setAcudes] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -52,26 +65,47 @@ export default function InicioScreen({ navigation }) {
   const [busqueda, setBusqueda] = useState('');
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState('Todos');
 
-  // Animación del encabezado dinámico al scrollear
-  const scrollY = useRef(new Animated.Value(0)).current;
+  // Control de colapso con umbral e histéresis:
+  // 1 = expandido (muestra saludo, nombre y logo)
+  // 0 = colapsado (altura 0, sólo muestra barra de búsqueda y filtros esenciales)
+  const animSaludo = useRef(new Animated.Value(1)).current;
+  const colapsadoRef = useRef(false);
 
-  const alturaSaludo = scrollY.interpolate({
-    inputRange: [0, 65],
-    outputRange: [56, 0],
-    extrapolate: 'clamp',
+  const alturaSaludo = animSaludo.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 48],
   });
 
-  const opacidadSaludo = scrollY.interpolate({
-    inputRange: [0, 40],
-    outputRange: [1, 0],
-    extrapolate: 'clamp',
+  const opacidadSaludo = animSaludo.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1],
   });
 
-  const margenSaludo = scrollY.interpolate({
-    inputRange: [0, 65],
-    outputRange: [12, 0],
-    extrapolate: 'clamp',
+  const margenSaludo = animSaludo.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 10],
   });
+
+  const handleScroll = (event) => {
+    const y = event.nativeEvent.contentOffset.y;
+    // Si baja más de 40px y está expandido, se encoge suavemente
+    if (y > 40 && !colapsadoRef.current) {
+      colapsadoRef.current = true;
+      Animated.timing(animSaludo, {
+        toValue: 0,
+        duration: 220,
+        useNativeDriver: false,
+      }).start();
+    } else if (y < 12 && colapsadoRef.current) {
+      // Si regresa a la parte superior, se vuelve a desplegar suavemente
+      colapsadoRef.current = false;
+      Animated.timing(animSaludo, {
+        toValue: 1,
+        duration: 220,
+        useNativeDriver: false,
+      }).start();
+    }
+  };
 
   const cargarDatos = useCallback(async () => {
     try {
@@ -111,19 +145,23 @@ export default function InicioScreen({ navigation }) {
 
   const acudesFiltrados = useMemo(() => {
     return acudes.filter((acude) => {
-      const termino = busqueda.toLowerCase().trim();
+      // 1. Normalización diacrítica (ignora tildes como 'futbol' -> 'fútbol')
+      const termino = normalizarTexto(busqueda);
       const coincideBusqueda =
         !termino ||
-        acude.nombre?.toLowerCase().includes(termino) ||
-        acude.docente?.toLowerCase().includes(termino) ||
-        acude.disciplina?.toLowerCase().includes(termino) ||
-        acude.ubicacion?.toLowerCase().includes(termino);
+        normalizarTexto(acude.nombre).includes(termino) ||
+        normalizarTexto(acude.docente).includes(termino) ||
+        normalizarTexto(acude.disciplina).includes(termino) ||
+        normalizarTexto(acude.ubicacion).includes(termino);
 
+      // 2. Filtro de Categoría tolerante a variantes
       let coincideCategoria = true;
+      const catNormalizada = normalizarTexto(acude.categoria || '');
+
       if (categoriaSeleccionada === 'Deportivas') {
-        coincideCategoria = acude.categoria?.toLowerCase() === 'deportiva';
+        coincideCategoria = catNormalizada.includes('deport');
       } else if (categoriaSeleccionada === 'Culturales') {
-        coincideCategoria = acude.categoria?.toLowerCase() === 'cultural';
+        coincideCategoria = catNormalizada.includes('cultur');
       }
 
       return coincideBusqueda && coincideCategoria;
@@ -189,14 +227,44 @@ export default function InicioScreen({ navigation }) {
   };
 
   const nombreUsuario = perfil?.nombre || user?.displayName || 'Estudiante TdeA';
+  const sedeUsuario = perfil?.sede?.toLowerCase().includes('itag')
+    ? 'Campus Itagüí'
+    : 'Campus Robledo';
+  const esItagui = sedeUsuario === 'Campus Itagüí';
+
+  const handleCambiarCampus = () => {
+    Alert.alert(
+      'Sedes Institucionales TdeA',
+      `Sede actual seleccionada: ${sedeUsuario}\n\n• Campus Robledo: Sede principal donde se ubica el Bloque 10 con la totalidad de los escenarios deportivos y culturales ACUDE.\n• Campus Itagüí: Sede Aburrá Sur para formación académica descentralizada.\n\n¿Deseas alternar tu campus activo en tu perfil?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: esItagui ? 'Cambiar a Campus Robledo' : 'Cambiar a Campus Itagüí',
+          onPress: async () => {
+            if (!user?.uid) return;
+            try {
+              const nuevaSede = esItagui ? 'Campus Robledo' : 'Campus Itagüí';
+              await actualizarPerfilUsuario(user.uid, { sede: nuevaSede });
+              if (recargarPerfil) {
+                await recargarPerfil();
+              }
+              Alert.alert('Sede Actualizada', `Tu campus activo ahora es ${nuevaSede}.`);
+            } catch (err) {
+              Alert.alert('Error', 'No se pudo cambiar el campus: ' + err.message);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <SafeAreaView style={styles.contenedor}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORES.fondo} />
 
-      {/* Cabecera: Sección dinámica con logo que se encoge + Filtros esenciales fijados */}
+      {/* Cabecera: Sección dinámica con saludo colapsable + filtros esenciales fijados */}
       <View style={styles.cabeceraContenedor}>
-        {/* Fila superior que se contrae con el scroll: Logo arriba a la izquierda + Nombre + Badge */}
+        {/* Fila superior que se contrae suavemente: Logo + Nombre + Badge de Campus */}
         <Animated.View
           style={[
             styles.filaSaludoAnimada,
@@ -216,8 +284,32 @@ export default function InicioScreen({ navigation }) {
               </Text>
             </View>
           </View>
-          <Badge estado="info" texto="Bloque 10" tamano="pequeno" />
+          <TouchableOpacity
+            onPress={handleCambiarCampus}
+            activeOpacity={0.7}
+            accessibilityLabel="Cambiar sede institucional"
+          >
+            <Badge
+              estado={esItagui ? 'inscrito' : 'info'}
+              texto={sedeUsuario}
+              tamano="pequeno"
+            />
+          </TouchableOpacity>
         </Animated.View>
+
+        {/* Validación de Campus para estudiantes de Itagüí */}
+        {esItagui && (
+          <TouchableOpacity
+            style={styles.bannerValidacionCampus}
+            onPress={handleCambiarCampus}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="information-circle-outline" size={15} color="#92400E" style={{ marginRight: 6 }} />
+            <Text style={styles.textoBannerCampus}>
+              <Text style={{ fontWeight: '700' }}>Campus Itagüí:</Text> Las cátedras presenciales ACUDE se desarrollan en Campus Robledo (Bloque 10).
+            </Text>
+          </TouchableOpacity>
+        )}
 
         {/* Zona Esencial: Barra de búsqueda */}
         <View style={styles.contenedorBuscador}>
@@ -297,7 +389,7 @@ export default function InicioScreen({ navigation }) {
         </View>
       </View>
 
-      {/* Listado reactivo de Cátedras ACUDE con Animated.FlatList */}
+      {/* Listado reactivo de Cátedras ACUDE con FlatList */}
       {cargando && !refrescando ? (
         <View style={styles.centroCarga}>
           <ActivityIndicator size="large" color={COLORES.verdePino} />
@@ -315,7 +407,7 @@ export default function InicioScreen({ navigation }) {
           </TouchableOpacity>
         </View>
       ) : (
-        <Animated.FlatList
+        <FlatList
           data={acudesFiltrados}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
@@ -324,10 +416,7 @@ export default function InicioScreen({ navigation }) {
           ListEmptyComponent={renderVacio}
           contentContainerStyle={styles.listaContenedor}
           keyboardShouldPersistTaps="handled"
-          onScroll={Animated.event(
-            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-            { useNativeDriver: false }
-          )}
+          onScroll={handleScroll}
           scrollEventThrottle={16}
           refreshControl={
             <RefreshControl
@@ -349,13 +438,31 @@ const styles = StyleSheet.create({
     backgroundColor: COLORES.fondo,
   },
   listaContenedor: {
+    paddingTop: 4,
     paddingBottom: 24,
   },
   cabeceraContenedor: {
     paddingHorizontal: 16,
     paddingTop: 8,
-    paddingBottom: 6,
+    paddingBottom: 4,
     backgroundColor: COLORES.fondo,
+  },
+  bannerValidacionCampus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    marginBottom: 8,
+  },
+  textoBannerCampus: {
+    fontSize: 11,
+    color: '#92400E',
+    flex: 1,
+    lineHeight: 15,
   },
   filaSaludoAnimada: {
     flexDirection: 'row',

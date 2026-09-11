@@ -139,12 +139,29 @@ export default function MisInscripcionesScreen({ navigation }) {
             <Text style={styles.textoDetalle}>Lugar: {item.ubicacion}</Text>
           </View>
 
-          <View style={styles.filaDetalle}>
-            <Ionicons name="time-outline" size={14} color={COLORES.verdePino} style={styles.iconoDetalle} />
-            <Text style={styles.textoDetalleResaltado}>
-              {resumenHorarios}
-            </Text>
-          </View>
+          {item.diaSeleccionado && item.franjaSeleccionada ? (
+            <View style={styles.cajaFranjaMatriculada}>
+              <View style={styles.filaFranjaMatriculada}>
+                <Ionicons name="calendar" size={16} color={COLORES.verdePino} style={styles.iconoDetalle} />
+                <Text style={styles.textoFranjaMatriculada}>
+                  Franja Matriculada: <Text style={styles.textoFranjaResaltada}>{item.diaSeleccionado} · {item.franjaSeleccionada}</Text>
+                </Text>
+              </View>
+              {item.lugarSesion ? (
+                <View style={[styles.filaFranjaMatriculada, { marginTop: 3 }]}>
+                  <Ionicons name="location-outline" size={14} color={COLORES.grisNeutro} style={styles.iconoDetalle} />
+                  <Text style={styles.textoLugarSesion} numberOfLines={1}>{item.lugarSesion}</Text>
+                </View>
+              ) : null}
+            </View>
+          ) : (
+            <View style={styles.filaDetalle}>
+              <Ionicons name="time-outline" size={14} color={COLORES.verdePino} style={styles.iconoDetalle} />
+              <Text style={styles.textoDetalleResaltado}>
+                {resumenHorarios}
+              </Text>
+            </View>
+          )}
 
           <View style={styles.cajaRecordatorio}>
             <Ionicons name="information-circle-outline" size={15} color={COLORES.verdePino} style={{ marginRight: 6 }} />
@@ -346,6 +363,34 @@ const styles = StyleSheet.create({
     color: COLORES.verdePino,
     fontWeight: '700',
     flex: 1,
+  },
+  cajaFranjaMatriculada: {
+    backgroundColor: '#F0F7F2',
+    borderWidth: 1,
+    borderColor: '#CBE58B',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 6,
+  },
+  filaFranjaMatriculada: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  textoFranjaMatriculada: {
+    fontSize: 13,
+    color: COLORES.negroInstitucional,
+    fontWeight: '600',
+    flex: 1,
+  },
+  textoFranjaResaltada: {
+    color: COLORES.verdePino,
+    fontWeight: '800',
+  },
+  textoLugarSesion: {
+    fontSize: 11,
+    color: COLORES.grisNeutro,
+    flex: 1,
+    marginLeft: 22,
   },
   cajaRecordatorio: {
     flexDirection: 'row',

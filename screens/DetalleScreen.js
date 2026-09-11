@@ -32,13 +32,24 @@ import { COLORES, SOMBRAS } from '../constants/theme';
 
 export default function DetalleScreen({ route, navigation }) {
   const { acude: acudeParam } = route.params || {};
-  const { user } = useAuth();
+  const { user, perfil } = useAuth();
 
   const [acude, setAcude] = useState(acudeParam || null);
   const [errorImagen, setErrorImagen] = useState(false);
   const [estaInscrito, setEstaInscrito] = useState(false);
   const [verificandoInscripcion, setVerificandoInscripcion] = useState(true);
   const [inscribiendo, setInscribiendo] = useState(false);
+
+  const horarios = Array.isArray(acude?.horarios) ? acude.horarios : [];
+  const [horarioSeleccionado, setHorarioSeleccionado] = useState(
+    horarios.length > 0 ? horarios[0] : null
+  );
+
+  useEffect(() => {
+    if (acude?.horarios && acude.horarios.length > 0 && !horarioSeleccionado) {
+      setHorarioSeleccionado(acude.horarios[0]);
+    }
+  }, [acude?.horarios, horarioSeleccionado]);
 
   const revisarInscripcion = useCallback(async () => {
     if (!acude?.id || !user?.uid) {
@@ -125,9 +136,19 @@ export default function DetalleScreen({ route, navigation }) {
       return;
     }
 
+    const franjaTexto = horarioSeleccionado
+      ? `${horarioSeleccionado.dia} (${horarioSeleccionado.horaInicio} - ${horarioSeleccionado.horaFin})`
+      : 'Horario según programación institucional';
+    const aulaTexto = horarioSeleccionado?.lugar || ubicacion;
+    const sedeEstudiante = perfil?.sede || 'Campus Robledo';
+    const esItagui = sedeEstudiante.toLowerCase().includes('itag');
+    const notaCampus = esItagui
+      ? '\n\n📍 Validación de Sede: Tu sede activa es Campus Itagüí. Esta cátedra se realiza de forma presencial en Campus Robledo (Bloque 10).'
+      : '';
+
     Alert.alert(
       'Confirmar Inscripción',
-      `¿Deseas inscribirte a "${nombre}"?\n\nDocente: ${docente}\nLugar: ${ubicacion}\n\nNota: Se requiere el 80% de asistencia mínima para acreditar el taller. Inasistencias reiteradas liberan el cupo para otro estudiante.`,
+      `¿Deseas inscribirte a "${nombre}"?\n\n📅 Franja: ${franjaTexto}\n👤 Docente: ${docente}\n📍 Lugar: ${aulaTexto}${notaCampus}\n\nNota: Se requiere el 80% de asistencia mínima para acreditar el taller. Inasistencias reiteradas liberan el cupo para otro estudiante.`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -138,6 +159,11 @@ export default function DetalleScreen({ route, navigation }) {
               const respuesta = await inscribirEstudiante(id, user.uid, {
                 email: user.email,
                 nombre: user.displayName,
+                horarioSeleccionado,
+                diaSeleccionado: horarioSeleccionado?.dia,
+                franjaSeleccionada: horarioSeleccionado
+                  ? `${horarioSeleccionado.horaInicio} - ${horarioSeleccionado.horaFin}`
+                  : undefined,
               });
 
               setEstaInscrito(true);
@@ -255,6 +281,75 @@ export default function DetalleScreen({ route, navigation }) {
               </View>
             </View>
           </View>
+
+          {/* Selector interactivo de Franja Horaria de Asistencia */}
+          {horarios.length > 0 && (
+            <View style={styles.seccionHorarios}>
+              <View style={styles.filaTituloSeccion}>
+                <Ionicons name="time-outline" size={18} color={COLORES.verdePino} style={{ marginRight: 6 }} />
+                <Text style={styles.seccionTituloPequeno}>
+                  {horarios.length > 1
+                    ? 'Selecciona tu Franja de Asistencia (Bloque 10):'
+                    : 'Franja Horaria Oficial:'}
+                </Text>
+              </View>
+              <View style={styles.contenedorPillsHorarios}>
+                {horarios.map((h, idx) => {
+                  const estaSeleccionado =
+                    horarioSeleccionado &&
+                    horarioSeleccionado.dia === h.dia &&
+                    horarioSeleccionado.horaInicio === h.horaInicio;
+                  return (
+                    <TouchableOpacity
+                      key={`${h.dia}-${h.horaInicio}-${idx}`}
+                      style={[
+                        styles.tarjetaSlotDetalle,
+                        estaSeleccionado && styles.tarjetaSlotDetalleActiva,
+                      ]}
+                      onPress={() => setHorarioSeleccionado(h)}
+                      activeOpacity={0.8}
+                    >
+                      <View style={styles.filaSlotCabecera}>
+                        <Ionicons
+                          name={estaSeleccionado ? 'checkmark-circle' : 'ellipse-outline'}
+                          size={18}
+                          color={estaSeleccionado ? COLORES.verdePino : COLORES.grisNeutro}
+                          style={{ marginRight: 8 }}
+                        />
+                        <Text
+                          style={[
+                            styles.textoSesionDia,
+                            estaSeleccionado && styles.textoSesionDiaActivo,
+                          ]}
+                        >
+                          {h.dia}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.textoSesionHora,
+                            estaSeleccionado && styles.textoSesionHoraActivo,
+                          ]}
+                        >
+                          {h.horaInicio} - {h.horaFin}
+                        </Text>
+                      </View>
+                      {h.lugar ? (
+                        <Text
+                          style={[
+                            styles.textoSesionLugar,
+                            estaSeleccionado && styles.textoSesionLugarActivo,
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {h.lugar}
+                        </Text>
+                      ) : null}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          )}
 
           {/* Botón de Enlace a Cronograma y Horarios Semanales */}
           <TouchableOpacity
@@ -467,6 +562,63 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: COLORES.borde,
     marginVertical: 12,
+  },
+  seccionHorarios: {
+    marginBottom: 18,
+  },
+  filaTituloSeccion: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  seccionTituloPequeno: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORES.verdePino,
+  },
+  contenedorPillsHorarios: {
+    gap: 8,
+  },
+  tarjetaSlotDetalle: {
+    backgroundColor: COLORES.superficie,
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1.5,
+    borderColor: COLORES.borde,
+  },
+  tarjetaSlotDetalleActiva: {
+    borderColor: COLORES.verdePino,
+    backgroundColor: '#F0F7F2',
+  },
+  filaSlotCabecera: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  textoSesionDia: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORES.negroInstitucional,
+    marginRight: 8,
+  },
+  textoSesionDiaActivo: {
+    color: COLORES.verdePino,
+  },
+  textoSesionHora: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORES.grisNeutro,
+  },
+  textoSesionHoraActivo: {
+    color: COLORES.verdePino,
+  },
+  textoSesionLugar: {
+    fontSize: 11,
+    color: COLORES.grisNeutro,
+    marginTop: 4,
+    marginLeft: 26,
+  },
+  textoSesionLugarActivo: {
+    color: '#004D22',
   },
   botonHorarios: {
     backgroundColor: COLORES.acentoClaro,

@@ -32,8 +32,13 @@ export default function Tabs() {
           borderTopWidth: 1,
           borderTopColor: COLORES.borde,
           height: Platform.OS === 'ios' ? 88 : 64,
-          paddingBottom: Platform.OS === 'ios' ? 28 : 10,
-          paddingTop: 8,
+          paddingBottom: Platform.OS === 'ios' ? 24 : 8,
+          paddingTop: 6,
+        },
+        tabBarItemStyle: {
+          justifyContent: 'center',
+          alignItems: 'center',
+          paddingVertical: 4,
         },
         tabBarLabelStyle: {
           fontSize: 12,
