@@ -60,28 +60,36 @@ export default function HorariosScreen({ route, navigation }) {
     verificarEstado();
   }, [verificarEstado]);
 
-  useEffect(() => {
-    async function cargarHorarios() {
-      if (!acude?.id) {
-        setCargando(false);
-        return;
-      }
-
-      try {
-        const data = await getHorariosAcude(acude.id);
-        setHorariosData(data);
-        if (Array.isArray(data.sesiones) && data.sesiones.length > 0) {
-          setSesionSeleccionada(data.sesiones[0]);
-        }
-      } catch (err) {
-        console.error('Error al cargar cronograma semanal:', err);
-      } finally {
-        setCargando(false);
-      }
+  const cargarHorarios = useCallback(async () => {
+    if (!acude?.id) {
+      setCargando(false);
+      return;
     }
 
-    cargarHorarios();
+    try {
+      const data = await getHorariosAcude(acude.id);
+      setHorariosData(data);
+      if (Array.isArray(data.sesiones) && data.sesiones.length > 0) {
+        setSesionSeleccionada((prev) => prev || data.sesiones[0]);
+      }
+    } catch (err) {
+      console.error('Error al cargar cronograma semanal:', err);
+    } finally {
+      setCargando(false);
+    }
   }, [acude?.id]);
+
+  useEffect(() => {
+    cargarHorarios();
+  }, [cargarHorarios]);
+
+  useEffect(() => {
+    const unsubscribe = navigation?.addListener?.('focus', () => {
+      verificarEstado();
+      cargarHorarios();
+    });
+    return unsubscribe;
+  }, [navigation, verificarEstado, cargarHorarios]);
 
   if (!acude) {
     return (

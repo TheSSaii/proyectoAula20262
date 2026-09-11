@@ -76,6 +76,13 @@ export default function DetalleScreen({ route, navigation }) {
     revisarInscripcion();
   }, [revisarInscripcion]);
 
+  useEffect(() => {
+    const unsubscribe = navigation?.addListener?.('focus', () => {
+      revisarInscripcion();
+    });
+    return unsubscribe;
+  }, [navigation, revisarInscripcion]);
+
   if (!acude) {
     return (
       <SafeAreaView style={styles.contenedor}>

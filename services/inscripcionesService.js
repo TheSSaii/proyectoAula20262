@@ -178,12 +178,11 @@ export async function inscribirEstudiante(acudeId, userId, datosEstudiante = {})
  * @returns {Promise<{ exitoso: boolean, mensaje: string }>}
  */
 export async function cancelarInscripcion(inscripcionId, acudeId) {
-  if (!inscripcionId || !acudeId) {
-    throw new Error('Se requiere el ID de la inscripción y el ID de la cátedra.');
+  if (!inscripcionId) {
+    throw new Error('Se requiere el ID de la inscripción.');
   }
 
   const inscripcionRef = doc(db, COLECCION_INSCRIPCIONES, inscripcionId);
-  const acudeRef = doc(db, COLECCION_ACUDES, acudeId);
 
   try {
     const resultado = await runTransaction(db, async (transaction) => {
@@ -198,7 +197,19 @@ export async function cancelarInscripcion(inscripcionId, acudeId) {
         throw new Error('Esta inscripción ya se encuentra cancelada.');
       }
 
-      const acudeDoc = await transaction.get(acudeRef);
+      // Determinar ID de cátedra para devolver el cupo (del documento o del parámetro)
+      const idAcudeDestino =
+        acudeId ||
+        dataInscripcion.idAcude ||
+        dataInscripcion.acudeId ||
+        dataInscripcion.idCatedra;
+
+      let acudeDoc = null;
+      let acudeRef = null;
+      if (idAcudeDestino) {
+        acudeRef = doc(db, COLECCION_ACUDES, idAcudeDestino);
+        acudeDoc = await transaction.get(acudeRef);
+      }
 
       // 2. TODAS LAS ESCRITURAS AL FINAL (WRITES)
       // A. Marcar inscripción como cancelada
@@ -208,7 +219,7 @@ export async function cancelarInscripcion(inscripcionId, acudeId) {
       });
 
       // B. Devolver el cupo en acudes si el documento existe
-      if (acudeDoc.exists()) {
+      if (acudeDoc && acudeDoc.exists() && acudeRef) {
         const dataAcude = acudeDoc.data();
         const cuposActuales = typeof dataAcude.cuposDisponibles === 'number'
           ? dataAcude.cuposDisponibles

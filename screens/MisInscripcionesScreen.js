@@ -83,9 +83,10 @@ export default function MisInscripcionesScreen({ navigation }) {
           onPress: async () => {
             try {
               setCancelandoId(item.id);
-              await cancelarInscripcion(item.id, item.idAcude);
+              await cancelarInscripcion(item.id, item.idAcude || item.acudeId);
 
               setInscripciones((prev) => prev.filter((i) => i.id !== item.id));
+              await cargarInscripciones();
 
               Alert.alert(
                 'Inscripción Cancelada',

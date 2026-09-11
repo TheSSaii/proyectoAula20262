@@ -125,6 +125,13 @@ export default function InicioScreen({ navigation }) {
     cargarDatos();
   }, [cargarDatos]);
 
+  useEffect(() => {
+    const unsubscribe = navigation?.addListener?.('focus', () => {
+      cargarDatos();
+    });
+    return unsubscribe;
+  }, [navigation, cargarDatos]);
+
   const handleRefrescar = () => {
     setRefrescando(true);
     cargarDatos();
