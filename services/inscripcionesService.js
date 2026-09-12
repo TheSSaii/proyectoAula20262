@@ -17,9 +17,21 @@ import {
 } from 'firebase/firestore';
 import dayjs from 'dayjs';
 import { db } from './firebaseConfig';
+import { normalizarHorariosConAforo } from './acudesService';
 
 const COLECCION_INSCRIPCIONES = 'inscripciones';
 const COLECCION_ACUDES = 'acudes';
+
+/**
+ * Normaliza cadenas removiendo tildes, diacríticos y espacios para comparaciones tolerantes.
+ */
+function normalizarTexto(txt = '') {
+  return String(txt || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+}
 
 /**
  * Verifica si un estudiante ya cuenta con una inscripción activa en una cátedra ACUDE.
@@ -87,7 +99,13 @@ export async function inscribirEstudiante(acudeId, userId, datosEstudiante = {})
       }
 
       const dataAcude = acudeDoc.data();
-      const horarios = Array.isArray(dataAcude.horarios) ? [...dataAcude.horarios] : [];
+      // Normalizar todos los horarios garantizando que cada franja tenga aforo definido y coherente
+      const horarios = normalizarHorariosConAforo(
+        dataAcude.horarios,
+        dataAcude.cupoTotal,
+        dataAcude.cuposDisponibles,
+        acudeId
+      );
 
       // Determinar horario seleccionado específico
       let indiceHorario = -1;
@@ -95,34 +113,31 @@ export async function inscribirEstudiante(acudeId, userId, datosEstudiante = {})
       if (horarioObj?.id) {
         indiceHorario = horarios.findIndex((h) => h.id === horarioObj.id);
       }
-      if (indiceHorario === -1 && (horarioObj?.dia || datosEstudiante.diaSeleccionado)) {
-        const diaTarget = (horarioObj?.dia || datosEstudiante.diaSeleccionado || '').toLowerCase().trim();
+      if (indiceHorario === -1) {
+        const diaTarget = normalizarTexto(horarioObj?.dia || datosEstudiante.diaSeleccionado || '');
         const horaTarget = (horarioObj?.horaInicio || '').trim();
-        indiceHorario = horarios.findIndex((h) => {
-          const coincideDia = (h.dia || '').toLowerCase().trim() === diaTarget;
-          if (!coincideDia) return false;
-          if (horaTarget && h.horaInicio) {
-            return h.horaInicio.trim() === horaTarget;
-          }
-          return true;
-        });
+        if (diaTarget) {
+          indiceHorario = horarios.findIndex((h) => {
+            const coincideDia = normalizarTexto(h.dia) === diaTarget;
+            if (!coincideDia) return false;
+            if (horaTarget && h.horaInicio) {
+              return h.horaInicio.trim() === horaTarget;
+            }
+            return true;
+          });
+        }
       }
+      // Fallback si no se seleccionó o no se encontró: primer horario con cupos libres
       if (indiceHorario === -1 && horarios.length > 0) {
-        indiceHorario = 0;
+        const conCupoIdx = horarios.findIndex((h) => h.cuposDisponibles > 0);
+        indiceHorario = conCupoIdx !== -1 ? conCupoIdx : 0;
       }
 
       const horarioElegido = indiceHorario !== -1 ? horarios[indiceHorario] : null;
 
       // Validación de cupos del horario específico
       if (horarioElegido) {
-        const cuposHorario =
-          typeof horarioElegido.cuposDisponibles === 'number'
-            ? horarioElegido.cuposDisponibles
-            : typeof dataAcude.cuposDisponibles === 'number'
-            ? dataAcude.cuposDisponibles
-            : 0;
-
-        if (cuposHorario <= 0) {
+        if (horarioElegido.cuposDisponibles <= 0) {
           throw new Error(
             `Los cupos oficiales en la app para el horario de los ${horarioElegido.dia} (${horarioElegido.horaInicio} - ${horarioElegido.horaFin}) están agotados. Puedes elegir otro horario disponible o consultar con el docente para sobrecupo presencial en Bloque 10.`
           );
@@ -136,25 +151,21 @@ export async function inscribirEstudiante(acudeId, userId, datosEstudiante = {})
         }
       }
 
-      // Decrementar cupo del horario específico
+      // Decrementar ÚNICAMENTE el cupo del horario específico seleccionado
       const nuevosHorarios = horarios.map((h, idx) => {
         if (idx === indiceHorario) {
-          const actuales = typeof h.cuposDisponibles === 'number' ? h.cuposDisponibles : 1;
           return {
             ...h,
-            cuposDisponibles: Math.max(0, actuales - 1),
+            cuposDisponibles: Math.max(0, h.cuposDisponibles - 1),
           };
         }
         return h;
       });
 
-      // Recalcular cupos totales y estado
+      // Recalcular cupos totales y estado a partir de los horarios normalizados
       const nuevosCupos =
         nuevosHorarios.length > 0
-          ? nuevosHorarios.reduce(
-              (acc, h) => acc + (typeof h.cuposDisponibles === 'number' ? h.cuposDisponibles : 0),
-              0
-            )
+          ? nuevosHorarios.reduce((acc, h) => acc + h.cuposDisponibles, 0)
           : Math.max(0, (typeof dataAcude.cuposDisponibles === 'number' ? dataAcude.cuposDisponibles : 1) - 1);
 
       const nuevoEstado = nuevosCupos === 0 ? 'agotado' : 'disponible';
@@ -283,13 +294,19 @@ export async function cancelarInscripcion(inscripcionId, acudeId) {
       // B. Devolver el cupo en acudes si el documento existe
       if (acudeDoc && acudeDoc.exists() && acudeRef) {
         const dataAcude = acudeDoc.data();
-        const horarios = Array.isArray(dataAcude.horarios) ? [...dataAcude.horarios] : [];
+        const horarios = normalizarHorariosConAforo(
+          dataAcude.horarios,
+          dataAcude.cupoTotal,
+          dataAcude.cuposDisponibles,
+          idAcudeDestino
+        );
 
         // Localizar el horario matriculado para reintegrar el cupo
         const idHorarioMatriculado =
           dataInscripcion.idHorario || dataInscripcion.horarioSeleccionado?.id;
-        const diaMatriculado =
-          dataInscripcion.diaSeleccionado || dataInscripcion.horarioSeleccionado?.dia;
+        const diaMatriculado = normalizarTexto(
+          dataInscripcion.diaSeleccionado || dataInscripcion.horarioSeleccionado?.dia || ''
+        );
         const franjaMatriculada = dataInscripcion.franjaSeleccionada || '';
 
         let indiceReintegro = -1;
@@ -297,9 +314,8 @@ export async function cancelarInscripcion(inscripcionId, acudeId) {
           indiceReintegro = horarios.findIndex((h) => h.id === idHorarioMatriculado);
         }
         if (indiceReintegro === -1 && diaMatriculado) {
-          const diaTarget = diaMatriculado.toLowerCase().trim();
           indiceReintegro = horarios.findIndex((h) => {
-            const coincideDia = (h.dia || '').toLowerCase().trim() === diaTarget;
+            const coincideDia = normalizarTexto(h.dia) === diaMatriculado;
             if (!coincideDia) return false;
             if (franjaMatriculada && h.horaInicio) {
               return franjaMatriculada.includes(h.horaInicio);
@@ -312,24 +328,20 @@ export async function cancelarInscripcion(inscripcionId, acudeId) {
         if (indiceReintegro !== -1) {
           nuevosHorarios = horarios.map((h, idx) => {
             if (idx === indiceReintegro) {
-              const actuales = typeof h.cuposDisponibles === 'number' ? h.cuposDisponibles : 0;
-              const maxCupos = typeof h.cupoTotal === 'number' ? h.cupoTotal : actuales + 1;
+              const maxCupos = typeof h.cupoTotal === 'number' ? h.cupoTotal : h.cuposDisponibles + 1;
               return {
                 ...h,
-                cuposDisponibles: Math.min(maxCupos, actuales + 1),
+                cuposDisponibles: Math.min(maxCupos, h.cuposDisponibles + 1),
               };
             }
             return h;
           });
         }
 
-        // Recalcular cupos totales y estado
+        // Recalcular cupos totales y estado a partir de los horarios normalizados
         const cuposTotalesActualizados =
           nuevosHorarios.length > 0
-            ? nuevosHorarios.reduce(
-                (acc, h) => acc + (typeof h.cuposDisponibles === 'number' ? h.cuposDisponibles : 0),
-                0
-              )
+            ? nuevosHorarios.reduce((acc, h) => acc + h.cuposDisponibles, 0)
             : Math.min(
                 typeof dataAcude.cupoTotal === 'number' ? dataAcude.cupoTotal : 25,
                 (typeof dataAcude.cuposDisponibles === 'number' ? dataAcude.cuposDisponibles : 0) + 1

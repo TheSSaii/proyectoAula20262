@@ -20,6 +20,81 @@ import { db } from './firebaseConfig';
 const COLECCION_ACUDES = 'acudes';
 
 /**
+ * Normaliza un arreglo de horarios asegurando que CADA franja tenga id, cupoTotal y cuposDisponibles válidos.
+ * Si los horarios en Firestore carecen de aforo granular (datos legados o no sembrados), distribuye
+ * equitativamente el aforo general del documento para garantizar integridad matemática y evitar que
+ * un horario quede con cupos indefinidos o en 0 al matricularse.
+ *
+ * @param {Array<Object>} rawHorarios - Arreglo de horarios del documento en Firestore.
+ * @param {number} cupoTotalDoc - Aforo total registrado en el documento.
+ * @param {number} cuposDisponiblesDoc - Cupos disponibles registrados en el documento.
+ * @param {string} acudeId - ID del documento ACUDE.
+ * @returns {Array<Object>} Arreglo de horarios normalizados con cupos individuales consistentes.
+ */
+export function normalizarHorariosConAforo(
+  rawHorarios = [],
+  cupoTotalDoc = 20,
+  cuposDisponiblesDoc = 0,
+  acudeId = ''
+) {
+  if (!Array.isArray(rawHorarios) || rawHorarios.length === 0) {
+    return [];
+  }
+
+  const n = rawHorarios.length;
+  const todosTienenCupos = rawHorarios.every(
+    (h) => typeof h?.cuposDisponibles === 'number' && typeof h?.cupoTotal === 'number'
+  );
+
+  if (todosTienenCupos) {
+    return rawHorarios.map((h, idx) => ({
+      ...h,
+      id: h.id || `${acudeId}-horario-${idx + 1}`,
+      dia: h.dia || 'Por definir',
+      horaInicio: h.horaInicio || '00:00',
+      horaFin: h.horaFin || '00:00',
+      lugar: h.lugar || 'Campus Robledo - Bloque 10',
+      docente: h.docente || 'Docente asignado',
+      cupoTotal: h.cupoTotal,
+      cuposDisponibles: Math.max(0, h.cuposDisponibles),
+    }));
+  }
+
+  // Distribución equitativa y exacta sin pérdida de cupos por residuo
+  const total = typeof cupoTotalDoc === 'number' && cupoTotalDoc > 0 ? cupoTotalDoc : 20;
+  const disponibles = typeof cuposDisponiblesDoc === 'number' ? Math.max(0, cuposDisponiblesDoc) : 0;
+
+  const baseTotal = Math.floor(total / n);
+  const remTotal = total % n;
+
+  const baseDisp = Math.floor(disponibles / n);
+  const remDisp = disponibles % n;
+
+  return rawHorarios.map((h, idx) => {
+    const idHorario = h.id || `${acudeId}-horario-${idx + 1}`;
+    const cupoTotalCalculado =
+      typeof h.cupoTotal === 'number' ? h.cupoTotal : baseTotal + (idx < remTotal ? 1 : 0);
+
+    const cuposDisponiblesCalculados =
+      typeof h.cuposDisponibles === 'number'
+        ? h.cuposDisponibles
+        : baseDisp + (idx < remDisp ? 1 : 0);
+
+    return {
+      ...h,
+      id: idHorario,
+      dia: h.dia || 'Por definir',
+      horaInicio: h.horaInicio || '00:00',
+      horaFin: h.horaFin || '00:00',
+      lugar: h.lugar || 'Campus Robledo - Bloque 10',
+      docente: h.docente || 'Docente asignado',
+      cupoTotal: cupoTotalCalculado,
+      cuposDisponibles: Math.max(0, Math.min(cupoTotalCalculado, cuposDisponiblesCalculados)),
+    };
+  });
+}
+
+/**
  * Normaliza y formatea un documento de Firestore de la colección 'acudes'.
  * @param {import('firebase/firestore').DocumentSnapshot} docSnapshot
  * @returns {Object} Objeto normalizado con id y campos estandarizados.
@@ -29,34 +104,12 @@ function normalizarDocumentoAcude(docSnapshot) {
   const idDoc = docSnapshot.id;
   const rawHorarios = Array.isArray(data.horarios) ? data.horarios : [];
 
-  // Normalizar cada horario individual asegurando aforo por franja
-  const horarios = rawHorarios.map((h, idx) => {
-    const idHorario = h.id || `${idDoc}-horario-${idx + 1}`;
-    const cupoTotalHorario =
-      typeof h.cupoTotal === 'number'
-        ? h.cupoTotal
-        : rawHorarios.length > 0 && typeof data.cupoTotal === 'number'
-        ? Math.floor(data.cupoTotal / rawHorarios.length)
-        : 10;
-
-    const cuposDisponiblesHorario =
-      typeof h.cuposDisponibles === 'number'
-        ? h.cuposDisponibles
-        : rawHorarios.length > 0 && typeof data.cuposDisponibles === 'number'
-        ? Math.floor(data.cuposDisponibles / rawHorarios.length)
-        : cupoTotalHorario;
-
-    return {
-      id: idHorario,
-      dia: h.dia || 'Por definir',
-      horaInicio: h.horaInicio || '00:00',
-      horaFin: h.horaFin || '00:00',
-      lugar: h.lugar || data.ubicacion || 'Campus Robledo - Bloque 10',
-      docente: h.docente || data.docente || 'Docente asignado',
-      cupoTotal: cupoTotalHorario,
-      cuposDisponibles: Math.max(0, cuposDisponiblesHorario),
-    };
-  });
+  const horarios = normalizarHorariosConAforo(
+    rawHorarios,
+    data.cupoTotal,
+    data.cuposDisponibles,
+    idDoc
+  );
 
   // Si hay horarios configurados, la suma de cupos individuales determina el aforo total
   const sumaCuposDisponibles =

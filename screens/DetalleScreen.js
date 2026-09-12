@@ -27,14 +27,31 @@ import {
   inscribirEstudiante,
   verificarInscripcionPrevia,
 } from '../services/inscripcionesService';
-import { getAcudeById } from '../services/acudesService';
+import { getAcudeById, normalizarHorariosConAforo } from '../services/acudesService';
 import { COLORES, SOMBRAS } from '../constants/theme';
 
 export default function DetalleScreen({ route, navigation }) {
   const { acude: acudeParam } = route.params || {};
   const { user, perfil } = useAuth();
 
-  const [acude, setAcude] = useState(acudeParam || null);
+  const [acude, setAcude] = useState(() => {
+    if (!acudeParam) return null;
+    if (Array.isArray(acudeParam.horarios) && acudeParam.horarios.length > 0) {
+      const hNorm = normalizarHorariosConAforo(
+        acudeParam.horarios,
+        acudeParam.cupoTotal,
+        acudeParam.cuposDisponibles,
+        acudeParam.id
+      );
+      const totalDisp = hNorm.reduce((acc, h) => acc + (h.cuposDisponibles || 0), 0);
+      return {
+        ...acudeParam,
+        horarios: hNorm,
+        cuposDisponibles: totalDisp,
+      };
+    }
+    return acudeParam;
+  });
   const [errorImagen, setErrorImagen] = useState(false);
   const [estaInscrito, setEstaInscrito] = useState(false);
   const [verificandoInscripcion, setVerificandoInscripcion] = useState(true);
@@ -214,14 +231,19 @@ export default function DetalleScreen({ route, navigation }) {
               setEstaInscrito(true);
               setAcude((prev) => {
                 if (!prev) return prev;
-                const nuevosHorarios = (prev.horarios || []).map((h) => {
+                const horariosBase = normalizarHorariosConAforo(
+                  prev.horarios,
+                  prev.cupoTotal,
+                  prev.cuposDisponibles,
+                  prev.id
+                );
+                const nuevosHorarios = horariosBase.map((h) => {
                   const esElMismo =
                     (horarioSeleccionado?.id && h.id === horarioSeleccionado.id) ||
                     (h.dia === horarioSeleccionado?.dia &&
                       h.horaInicio === horarioSeleccionado?.horaInicio);
                   if (esElMismo) {
-                    const actuales = typeof h.cuposDisponibles === 'number' ? h.cuposDisponibles : 1;
-                    return { ...h, cuposDisponibles: Math.max(0, actuales - 1) };
+                    return { ...h, cuposDisponibles: Math.max(0, (h.cuposDisponibles || 0) - 1) };
                   }
                   return h;
                 });
@@ -234,8 +256,19 @@ export default function DetalleScreen({ route, navigation }) {
                   ...prev,
                   horarios: nuevosHorarios,
                   cuposDisponibles: sumaCupos,
+                  estado: sumaCupos > 0 ? 'disponible' : 'agotado',
                 };
               });
+
+              // Sincronizar inmediatamente con los datos consolidados en Firestore
+              try {
+                const acudeActualizado = await getAcudeById(id);
+                if (acudeActualizado) {
+                  setAcude(acudeActualizado);
+                }
+              } catch (refreshErr) {
+                console.warn('Error refrescando cátedra post-inscripción:', refreshErr);
+              }
 
               Alert.alert(
                 '¡Inscripción Exitosa!',
