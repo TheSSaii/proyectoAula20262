@@ -7,7 +7,7 @@
 
 ---
 
-## 📌 1. Identidad y Objetivo del Sistema
+## 1. Identidad y Objetivo del Sistema
 
 **CanchaYa** conserva su nombre e identidad visual dentro del Tecnológico de Antioquia, consolidándose como la **extensión móvil complementaria del portal institucional Campus TdeA**.
 
@@ -19,7 +19,7 @@ Mientras que la matrícula académica y la gestión oficial global de los estudi
 
 ---
 
-## ⚠️ 2. Reglas de Negocio Críticas (ACUDE TdeA)
+##  2. Reglas de Negocio Críticas (ACUDE TdeA)
 
 ### A. Franjas Semanales Fijas (No Alquiler por Horas)
 Las cátedras ACUDE no se alquilan por turnos sueltos ni funcionan como reservas comerciales de canchas. Tienen **encuentros semanales recurrentes fijos** durante todo el semestre académico (ej. *Martes y Jueves de 14:00 a 16:00*). La visualización de la agenda semanal en la app permite contrastar de inmediato los días de práctica con el horario de materias registrado en Campus TdeA.
@@ -37,7 +37,7 @@ Cuando una actividad tiene sus cupos virtuales agotados en la app o en Campus Td
 
 ---
 
-## 🏛️ 3. Mapeo Oficial de Espacios en Campus Robledo
+##  3. Mapeo Oficial de Espacios en Campus Robledo
 
 El campus Robledo del TdeA se organiza en bloques numerados del **1 al 13**. Las Cátedras ACUDE de Bienestar Institucional tienen su epicentro en el **Bloque 10**:
 
@@ -52,7 +52,7 @@ El campus Robledo del TdeA se organiza en bloques numerados del **1 al 13**. Las
 
 ---
 
-## 🛠️ 4. Stack Tecnológico
+##  4. Stack Tecnológico
 
 | Capa / Herramienta | Tecnología | Versión / Detalle |
 |---|---|---|
@@ -66,7 +66,7 @@ El campus Robledo del TdeA se organiza en bloques numerados del **1 al 13**. Las
 
 ---
 
-## 📂 5. Arquitectura del Proyecto
+## 5. Arquitectura del Proyecto
 
 El repositorio implementa una arquitectura modular por capas desacopladas donde la interfaz de usuario nunca ejecuta consultas directas a la base de datos:
 
@@ -111,7 +111,7 @@ canchaYa/
 
 ---
 
-## 🗄️ 6. Modelo de Datos en Cloud Firestore
+## 6. Modelo de Datos en Cloud Firestore
 
 ### Colección: `acudes`
 Documento representativo de una Cátedra o Taller formativo:
@@ -174,7 +174,7 @@ Perfil institucional del estudiante en Firestore (vinculado con su UID de Fireba
 
 ---
 
-## 🚀 7. Puesta en Marcha (Instalación y Ejecución)
+##  7. Puesta en Marcha (Instalación y Ejecución)
 
 ### Requisitos previos:
 - **Node.js**: Versión LTS (v20 o superior).
@@ -203,76 +203,7 @@ npx expo start
 
 ### Siembra inicial de datos (Seed):
 Si ejecutas la app por primera vez con una base de datos vacía, en la pantalla principal (`InicioScreen`) o en `PerfilScreen` encontrarás el botón:
-> **🌱 Cargar Cátedras ACUDE TdeA (Seed)**  
+> **  Cargar Cátedras ACUDE TdeA (Seed)**  
 Al pulsarlo, se insertarán automáticamente las 6 cátedras reales del campus Robledo con sus horarios, docentes y espacios del Bloque 10 de forma 100% idempotente (`setDoc` con `{ merge: true }`).
 
 ---
-
-## 🎓 8. Guía para la Sustentación Oral Individual
-
-Respuestas técnicas y de arquitectura para responder a preguntas de evaluación:
-
-1. **¿Por qué CanchaYa no reemplaza a Campus TdeA y cómo interactúan?**  
-   *Campus TdeA* es la plataforma web institucional rectora de la vida académica del estudiante (matrícula oficial, notas, créditos). *CanchaYa* actúa como una **extensión móvil especializada para Bienestar Universitario**, enfocada en la consulta ágil de horarios, prevención de cruces académicos, inscripción a cátedras ACUDE y la gestión presencial de sobrecupos directamente en el campus Robledo.
-
-2. **¿Cómo se resuelven las concurrencias y la integridad de cupos al inscribirse?**  
-   En `services/inscripcionesService.js`, la función `inscribirEstudiante` utiliza `runTransaction` de Cloud Firestore. Esta operación atómica lee el documento del taller, verifica que `cuposDisponibles > 0` y que el estudiante no esté matriculado previamente. En un único commit indivisible, reduce el contador de cupos y crea el documento de inscripción. Si dos estudiantes intentan tomar el último cupo simultáneamente, Firestore detecta la colisión y sólo aprueba una transacción, evitando cualquier sobrecupo virtual duplicado.
-
-3. **¿Cómo se garantiza que al cancelar se libere el cupo para otro estudiante?**  
-   La función `cancelarInscripcion` ejecuta igualmente una transacción: conmuta el estado de la inscripción a `'cancelada'` y a su vez incrementa `cuposDisponibles + 1` en la cátedra correspondiente. Si la cátedra estaba en estado `'agotado'`, se actualiza automáticamente a `'disponible'`, permitiendo que otro estudiante pueda inscribirse de inmediato desde la app o que un asistente presencial aproveche esa vacante con el docente.
-
-4. **¿Por qué la consulta de cronograma semanal es vital si no es una app de alquiler de canchas?**  
-   Porque las cátedras ACUDE se reúnen en franjas recurrentes fijas. El estudiante necesita contrastar esos días y horas contra su horario matriculado en Campus TdeA para evitar inasistencias que le hagan perder el curso (regla del 80%). Además, si no logró cupo en la plataforma virtual, el cronograma le indica el momento exacto y el aula del Bloque 10 donde debe presentarse físicamente con el profesor a solicitar sobrecupo presencial.
-
-5. **¿Cómo se evita que el buscador cierre el teclado al escribir?**  
-   El `TextInput` y los chips de categoría se mantienen en una vista fija **fuera del `FlatList`** en `screens/InicioScreen.js`. Si se renderizara dentro de `ListHeaderComponent`, cada actualización del estado `busqueda` desmontaría y recrearía el encabezado de la lista, lo que provocaría la pérdida inmediata del foco (`blur`) del teclado en dispositivos móviles.
-
-## 🐛 Registro de Errores y Mejoras Pendientes (Bug Tracking)
-
-A continuación se documentan los errores reportados durante las pruebas de usuario (QA) extraídos de la revisión en video y su correspondiente resolución técnica:
-
-### ⚙️ 2. Errores de Lógica de Negocio y Flujo de Inscripción
-*   **Desacople en la Selección del Día/Horario:** `[RESUELTO]`
-    *   **Descripción:** Al ingresar a la ficha de horarios de una cátedra, el sistema pedía confirmar la inscripción, pero no permitía al usuario elegir a qué horario específico deseaba matricularse.
-    *   **Impacto:** Si un usuario seleccionaba un horario específico en el cronograma (por ejemplo, el Miércoles) y se inscribía, el sistema ignoraba su elección y lo inscribía automáticamente en el primer horario disponible (ej. Lunes).
-    *   **Solución Aplicada:** 
-        - En `services/inscripcionesService.js`, la función `inscribirEstudiante` ahora recibe `horarioSeleccionado`, `diaSeleccionado` y `franjaSeleccionada` en el payload de metadatos, guardándolos atómicamente en el documento de la colección `inscripciones` (`diaSeleccionado`, `franjaSeleccionada`, `lugarSesion`).
-        - En `screens/HorariosScreen.js` y `screens/DetalleScreen.js`, se añadieron selectores interactivos de franjas horarias con feedback visual (`radio/checkmark`), enviando el horario explícito seleccionado por el estudiante.
-        - En `screens/MisInscripcionesScreen.js`, la tarjeta de inscripción ahora resalta de forma destacada el día y franja matriculada por el estudiante.
-*   **Incapacidad de Inscripción en Días Específicos (ej. Viernes):** `[RESUELTO]`
-    *   **Descripción:** Al intentar hacer tap sobre ciertos días (como el Viernes en algunas cátedras), la interfaz no respondía ni permitía avanzar con el proceso de matrícula.
-    *   **Solución Aplicada:**
-        - En `components/DateSelector.js`, se removió la propiedad `disabled` que bloqueaba el evento `onPress` en los días sin coincidencia previa o en días específicos de fin de semana, permitiendo siempre la navegación fluida entre días.
-        - En `components/SlotPicker.js`, se implementó la interacción táctil con `onSelectSesion` y una vista informativa con botón para "Ver todos los horarios de la cátedra" cuando el día filtrado no contiene franjas.
-
-### 🔍 3. Errores en Filtros y Búsqueda
-*   **Buscador Sensible a Tildes (Diacríticos):** `[RESUELTO]`
-    *   **Descripción:** Si un usuario buscaba el término "Futbol" (sin tilde), el buscador arrojaba 0 resultados. Solo funcionaba si se buscaba "Fútbol" (con tilde).
-    *   **Solución Aplicada:** En `screens/InicioScreen.js`, se implementó la función de utilidad `normalizarTexto(cadena)` que utiliza `.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()`. Se normalizan en tiempo real tanto el texto escrito por el usuario como los campos `nombre`, `docente`, `disciplina`, `ubicacion` y `categoria` de cada cátedra. De esta forma, "futbol" encuentra "Fútbol Sala", "danza" encuentra "Danza Folclórica", etc.
-*   **Clasificación Errónea en Filtros de Categorías ("Danza Folclórica"):** `[RESUELTO]`
-    *   **Descripción:** Al presionar el filtro de actividades "Culturales", la cátedra de "Danza Folclórica" no aparecía en la lista, a pesar de tener la etiqueta visual de "Cultural". Sin embargo, otras cátedras como "Teatro" sí aparecían correctamente.
-    *   **Solución Aplicada:** En `screens/InicioScreen.js`, el filtrado por categorías fue desacoplado de coincidencias estrictas de cadenas (`===`). Ahora evalúa si la categoría normalizada contiene la raíz semántica (`catNormalizada.includes('cultur')` para Culturales y `catNormalizada.includes('deport')` para Deportivas), garantizando que "Danza Folclórica" y "Teatro" se listen siempre bajo la categoría "Culturales".
-
-### 📱 4. UI/UX (Interfaz y Experiencia de Usuario)
-*   **Problemas con el Hitbox (Área Táctil) en la Navegación Inferior:** `[RESUELTO]`
-    *   **Descripción:** En algunos dispositivos móviles, el área táctil de los iconos del menú de navegación inferior estaba desfasada. El usuario tenía que presionar fuera del icono para que el botón funcionara.
-    *   **Solución Aplicada:** En `navigation/Tabs.js`, se añadió la propiedad `tabBarItemStyle: { justifyContent: 'center', alignItems: 'center', paddingVertical: 4 }` y se recalibraron los paddings verticales de `tabBarStyle` (`paddingTop: 6`, `paddingBottom: Platform.OS === 'ios' ? 24 : 8`). Esto centra de forma precisa el área táctil de cada pestaña sobre el icono y la etiqueta, asegurando una respuesta táctil inmediata en toda la superficie.
-*   **Botón de Ficha de Inscripción Inactivo en Cronograma:** `[RESUELTO]`
-    *   **Descripción:** En la vista principal del cronograma (`HorariosScreen.js`), el componente visual de sesión no permitía ejecutar la matrícula directamente.
-    *   **Solución Aplicada:** En `components/SlotPicker.js` y `screens/HorariosScreen.js`, se transformó cada franja horaria en un elemento interactivo que selecciona la sesión (`sesionSeleccionada`) y activa un contenedor de matrícula contextual con el botón "Matricularme en esta Franja" (con confirmación del 80% de asistencia mínima y verificación de aforo/estado previo).
-
-*   **Gestión y Visualización de Cupos Independientes por Horario (ej. Danza Contemporánea):** `[RESUELTO]`
-    *   **Descripción:** Las cátedras ACUDE tienen cupos independientes en cada uno de sus horarios, pero la aplicación solo mostraba el cupo total acumulado, omitiendo la disponibilidad específica de cada sesión. Por ejemplo, en una cátedra con 2 cupos totales (1 en cada franja), si una franja se agotaba, el usuario no podía ver cuál estaba llena ni el sistema bloqueaba la inscripción en esa franja específica.
-    *   **Solución Aplicada:**
-        - En `services/acudesService.js`, se estandarizó la normalización de cada horario con `cupoTotal` y `cuposDisponibles` propios, garantizando que el aforo global sea la suma precisa de los cupos de sus franjas.
-        - En `services/inscripcionesService.js`, `inscribirEstudiante` valida y descuenta atómicamente el cupo en el horario seleccionado dentro de una transacción `runTransaction`. Al cancelar con `cancelarInscripcion`, el cupo se reintegra atómicamente a la franja horaria correspondiente del estudiante.
-        - En `components/SlotPicker.js` y `screens/DetalleScreen.js`, cada franja horaria ahora cuenta con su propio badge visual de aforo individual (`X cupos libres` o `0 cupos / Agotado`).
-        - En `screens/HorariosScreen.js` y `screens/DetalleScreen.js`, se implementó validación visual y bloqueo informativo cuando una franja está agotada, orientando al estudiante hacia otra franja o hacia el sobrecupo presencial con el docente en el Bloque 10.
-        - En `services/seedAcudes.js`, se incorporó la cátedra "Danza Contemporánea y Expresión Corporal" configurada con 2 cupos totales (1 en Martes y 1 en Jueves) y se estructuraron aforos granulares en todo el catálogo.
-
-### ❓ 5. Dudas de Arquitectura por Aclarar
-*   **Botón "Sincronizar Catálogo ACUDE en Firestore":** `[ACLARADO Y DOCUMENTADO]`
-    *   **Descripción y Funcionamiento Técnico:**
-        - **¿Qué hace por debajo?**: Ejecuta la función `ejecutarSeedAcudes()` (`services/seedAcudes.js`), la cual se conecta directamente con **Google Cloud Firestore**.
-        - **Proceso de base de datos**: Realiza un lote de escrituras utilizando `setDoc(doc(db, 'acudes', acude.id), datos, { merge: true })`. Al utilizar identificadores deterministas fijos (`acude-danza-contemporanea`, `acude-futsal`, `acude-danza-folclorica`, `acude-voleibol`, `acude-teatro-expresion`, etc.) y la opción `{ merge: true }`, la operación es **completamente idempotente**: no duplica documentos en caso de múltiples pulsaciones, crea las cátedras si la colección no existe y actualiza campos institucionales (aforos por horario, requisitos, docentes, horarios y marcas de tiempo `serverTimestamp()`) preservando el estado de la base de datos.
-        - **Mejora en UI:** En `screens/PerfilScreen.js`, se agregó un subtítulo explícito debajo del botón indicando al usuario y a los evaluadores que se trata de un proceso de inicialización e hidratación remota en Cloud Firestore para el Bloque 10.
