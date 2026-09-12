@@ -87,32 +87,85 @@ export async function inscribirEstudiante(acudeId, userId, datosEstudiante = {})
       }
 
       const dataAcude = acudeDoc.data();
-      const cuposDisponibles = typeof dataAcude.cuposDisponibles === 'number'
-        ? dataAcude.cuposDisponibles
-        : 0;
+      const horarios = Array.isArray(dataAcude.horarios) ? [...dataAcude.horarios] : [];
 
-      if (cuposDisponibles <= 0) {
-        throw new Error(
-          'Los cupos oficiales en la app para esta cátedra están agotados. Puedes consultar el cronograma y lugar para solicitar sobrecupo presencial en la primera sesión con el docente.'
-        );
+      // Determinar horario seleccionado específico
+      let indiceHorario = -1;
+      const horarioObj = datosEstudiante.horarioSeleccionado;
+      if (horarioObj?.id) {
+        indiceHorario = horarios.findIndex((h) => h.id === horarioObj.id);
+      }
+      if (indiceHorario === -1 && (horarioObj?.dia || datosEstudiante.diaSeleccionado)) {
+        const diaTarget = (horarioObj?.dia || datosEstudiante.diaSeleccionado || '').toLowerCase().trim();
+        const horaTarget = (horarioObj?.horaInicio || '').trim();
+        indiceHorario = horarios.findIndex((h) => {
+          const coincideDia = (h.dia || '').toLowerCase().trim() === diaTarget;
+          if (!coincideDia) return false;
+          if (horaTarget && h.horaInicio) {
+            return h.horaInicio.trim() === horaTarget;
+          }
+          return true;
+        });
+      }
+      if (indiceHorario === -1 && horarios.length > 0) {
+        indiceHorario = 0;
       }
 
-      const nuevosCupos = cuposDisponibles - 1;
+      const horarioElegido = indiceHorario !== -1 ? horarios[indiceHorario] : null;
+
+      // Validación de cupos del horario específico
+      if (horarioElegido) {
+        const cuposHorario =
+          typeof horarioElegido.cuposDisponibles === 'number'
+            ? horarioElegido.cuposDisponibles
+            : typeof dataAcude.cuposDisponibles === 'number'
+            ? dataAcude.cuposDisponibles
+            : 0;
+
+        if (cuposHorario <= 0) {
+          throw new Error(
+            `Los cupos oficiales en la app para el horario de los ${horarioElegido.dia} (${horarioElegido.horaInicio} - ${horarioElegido.horaFin}) están agotados. Puedes elegir otro horario disponible o consultar con el docente para sobrecupo presencial en Bloque 10.`
+          );
+        }
+      } else {
+        const cuposGlobales = typeof dataAcude.cuposDisponibles === 'number' ? dataAcude.cuposDisponibles : 0;
+        if (cuposGlobales <= 0) {
+          throw new Error(
+            'Los cupos oficiales en la app para esta cátedra están agotados. Puedes consultar el cronograma y lugar para solicitar sobrecupo presencial en la primera sesión con el docente.'
+          );
+        }
+      }
+
+      // Decrementar cupo del horario específico
+      const nuevosHorarios = horarios.map((h, idx) => {
+        if (idx === indiceHorario) {
+          const actuales = typeof h.cuposDisponibles === 'number' ? h.cuposDisponibles : 1;
+          return {
+            ...h,
+            cuposDisponibles: Math.max(0, actuales - 1),
+          };
+        }
+        return h;
+      });
+
+      // Recalcular cupos totales y estado
+      const nuevosCupos =
+        nuevosHorarios.length > 0
+          ? nuevosHorarios.reduce(
+              (acc, h) => acc + (typeof h.cuposDisponibles === 'number' ? h.cuposDisponibles : 0),
+              0
+            )
+          : Math.max(0, (typeof dataAcude.cuposDisponibles === 'number' ? dataAcude.cuposDisponibles : 1) - 1);
+
       const nuevoEstado = nuevosCupos === 0 ? 'agotado' : 'disponible';
 
       // 2. Decrementar cupo en la cátedra
       transaction.update(acudeRef, {
+        horarios: nuevosHorarios,
         cuposDisponibles: nuevosCupos,
         estado: nuevoEstado,
         actualizadoEn: new Date(),
       });
-
-      // Determinar horario seleccionado específico (o el primero como fallback)
-      const horarioElegido =
-        datosEstudiante.horarioSeleccionado ||
-        (Array.isArray(dataAcude.horarios) && dataAcude.horarios.length > 0
-          ? dataAcude.horarios[0]
-          : null);
 
       const diaElegido =
         datosEstudiante.diaSeleccionado ||
@@ -130,6 +183,9 @@ export async function inscribirEstudiante(acudeId, userId, datosEstudiante = {})
         dataAcude.ubicacion ||
         'Campus Robledo - Bloque 10';
 
+      const idHorarioElegido =
+        horarioElegido?.id || `${acudeId}-horario-${indiceHorario + 1}`;
+
       // 3. Crear el documento de inscripción vinculado al estudiante
       transaction.set(nuevaInscripcionRef, {
         idUsuario: userId,
@@ -141,9 +197,15 @@ export async function inscribirEstudiante(acudeId, userId, datosEstudiante = {})
         disciplina: dataAcude.disciplina || 'General',
         docente: dataAcude.docente || 'Docente asignado',
         ubicacion: dataAcude.ubicacion || 'Campus Robledo - Bloque 10',
-        horarios: Array.isArray(dataAcude.horarios) ? dataAcude.horarios : [],
+        horarios: nuevosHorarios,
         // Metadatos específicos de la sesión elegida por el estudiante
-        horarioSeleccionado: horarioElegido,
+        horarioSeleccionado: horarioElegido
+          ? {
+              ...horarioElegido,
+              cuposDisponibles: Math.max(0, (horarioElegido.cuposDisponibles || 1) - 1),
+            }
+          : null,
+        idHorario: idHorarioElegido,
         diaSeleccionado: diaElegido,
         franjaSeleccionada: franjaElegida,
         lugarSesion: lugarElegido,
@@ -221,17 +283,61 @@ export async function cancelarInscripcion(inscripcionId, acudeId) {
       // B. Devolver el cupo en acudes si el documento existe
       if (acudeDoc && acudeDoc.exists() && acudeRef) {
         const dataAcude = acudeDoc.data();
-        const cuposActuales = typeof dataAcude.cuposDisponibles === 'number'
-          ? dataAcude.cuposDisponibles
-          : 0;
-        const cupoTotal = typeof dataAcude.cupoTotal === 'number'
-          ? dataAcude.cupoTotal
-          : cuposActuales + 1;
+        const horarios = Array.isArray(dataAcude.horarios) ? [...dataAcude.horarios] : [];
 
-        const nuevosCupos = Math.min(cuposActuales + 1, cupoTotal);
+        // Localizar el horario matriculado para reintegrar el cupo
+        const idHorarioMatriculado =
+          dataInscripcion.idHorario || dataInscripcion.horarioSeleccionado?.id;
+        const diaMatriculado =
+          dataInscripcion.diaSeleccionado || dataInscripcion.horarioSeleccionado?.dia;
+        const franjaMatriculada = dataInscripcion.franjaSeleccionada || '';
+
+        let indiceReintegro = -1;
+        if (idHorarioMatriculado) {
+          indiceReintegro = horarios.findIndex((h) => h.id === idHorarioMatriculado);
+        }
+        if (indiceReintegro === -1 && diaMatriculado) {
+          const diaTarget = diaMatriculado.toLowerCase().trim();
+          indiceReintegro = horarios.findIndex((h) => {
+            const coincideDia = (h.dia || '').toLowerCase().trim() === diaTarget;
+            if (!coincideDia) return false;
+            if (franjaMatriculada && h.horaInicio) {
+              return franjaMatriculada.includes(h.horaInicio);
+            }
+            return true;
+          });
+        }
+
+        let nuevosHorarios = horarios;
+        if (indiceReintegro !== -1) {
+          nuevosHorarios = horarios.map((h, idx) => {
+            if (idx === indiceReintegro) {
+              const actuales = typeof h.cuposDisponibles === 'number' ? h.cuposDisponibles : 0;
+              const maxCupos = typeof h.cupoTotal === 'number' ? h.cupoTotal : actuales + 1;
+              return {
+                ...h,
+                cuposDisponibles: Math.min(maxCupos, actuales + 1),
+              };
+            }
+            return h;
+          });
+        }
+
+        // Recalcular cupos totales y estado
+        const cuposTotalesActualizados =
+          nuevosHorarios.length > 0
+            ? nuevosHorarios.reduce(
+                (acc, h) => acc + (typeof h.cuposDisponibles === 'number' ? h.cuposDisponibles : 0),
+                0
+              )
+            : Math.min(
+                typeof dataAcude.cupoTotal === 'number' ? dataAcude.cupoTotal : 25,
+                (typeof dataAcude.cuposDisponibles === 'number' ? dataAcude.cuposDisponibles : 0) + 1
+              );
 
         transaction.update(acudeRef, {
-          cuposDisponibles: nuevosCupos,
+          horarios: nuevosHorarios,
+          cuposDisponibles: cuposTotalesActualizados,
           estado: 'disponible',
           actualizadoEn: new Date(),
         });

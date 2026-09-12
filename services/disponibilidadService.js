@@ -28,15 +28,25 @@ export async function getHorariosAcude(acudeId) {
     throw new Error('La actividad solicitada no existe.');
   }
 
-  // Lista normalizada de sesiones semanales
-  const sesiones = (acude.horarios || []).map((sesion, index) => ({
-    id: `${acude.id}-sesion-${index + 1}`,
-    dia: sesion.dia || 'Por definir',
-    horaInicio: sesion.horaInicio || '00:00',
-    horaFin: sesion.horaFin || '00:00',
-    lugar: sesion.lugar || acude.ubicacion || 'Campus Robledo - Bloque 10',
-    docente: acude.docente,
-  }));
+  // Lista normalizada de sesiones semanales con aforo individual
+  const sesiones = (acude.horarios || []).map((sesion, index) => {
+    const cupoTotal = typeof sesion.cupoTotal === 'number' ? sesion.cupoTotal : null;
+    const cuposDisponibles = typeof sesion.cuposDisponibles === 'number' ? sesion.cuposDisponibles : null;
+    return {
+      id: sesion.id || `${acude.id}-sesion-${index + 1}`,
+      dia: sesion.dia || 'Por definir',
+      horaInicio: sesion.horaInicio || '00:00',
+      horaFin: sesion.horaFin || '00:00',
+      lugar: sesion.lugar || acude.ubicacion || 'Campus Robledo - Bloque 10',
+      docente: sesion.docente || acude.docente,
+      cupoTotal,
+      cuposDisponibles,
+      hayCupo:
+        typeof cuposDisponibles === 'number'
+          ? cuposDisponibles > 0
+          : (acude.cuposDisponibles || 0) > 0,
+    };
+  });
 
   // Días únicos de la semana en los que sesiona la cátedra
   const diasSemanales = [...new Set(sesiones.map((s) => s.dia))];

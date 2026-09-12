@@ -175,6 +175,11 @@ export default function AcudeCard({ acude, onPress, style }) {
             <Text style={styles.labelCupos}>
               Aforo: <Text style={styles.valorCupos}>{cuposDisponibles}</Text> / {cupoTotal}
             </Text>
+            {horarios.length > 1 && (
+              <Text style={styles.textoMultiplesHorarios}>
+                · {horarios.length} horarios
+              </Text>
+            )}
           </View>
 
           <View style={styles.botonAccion}>
@@ -312,6 +317,12 @@ const styles = StyleSheet.create({
   valorCupos: {
     fontWeight: '800',
     color: COLORES.verdePino,
+  },
+  textoMultiplesHorarios: {
+    fontSize: 11,
+    color: COLORES.verdePino,
+    fontWeight: '600',
+    marginLeft: 4,
   },
   botonAccion: {
     flexDirection: 'row',

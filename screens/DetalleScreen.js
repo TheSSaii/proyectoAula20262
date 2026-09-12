@@ -41,15 +41,31 @@ export default function DetalleScreen({ route, navigation }) {
   const [inscribiendo, setInscribiendo] = useState(false);
 
   const horarios = Array.isArray(acude?.horarios) ? acude.horarios : [];
-  const [horarioSeleccionado, setHorarioSeleccionado] = useState(
-    horarios.length > 0 ? horarios[0] : null
-  );
+  const primerHorarioConCupo =
+    horarios.find((h) => (typeof h.cuposDisponibles === 'number' ? h.cuposDisponibles > 0 : true)) ||
+    (horarios.length > 0 ? horarios[0] : null);
+
+  const [horarioSeleccionado, setHorarioSeleccionado] = useState(primerHorarioConCupo);
 
   useEffect(() => {
-    if (acude?.horarios && acude.horarios.length > 0 && !horarioSeleccionado) {
-      setHorarioSeleccionado(acude.horarios[0]);
+    if (acude?.horarios && acude.horarios.length > 0) {
+      setHorarioSeleccionado((actual) => {
+        if (actual) {
+          const coincidencia = acude.horarios.find(
+            (h) =>
+              (actual.id && h.id === actual.id) ||
+              (h.dia === actual.dia && h.horaInicio === actual.horaInicio)
+          );
+          if (coincidencia) return coincidencia;
+        }
+        return (
+          acude.horarios.find(
+            (h) => (typeof h.cuposDisponibles === 'number' ? h.cuposDisponibles > 0 : true)
+          ) || acude.horarios[0]
+        );
+      });
     }
-  }, [acude?.horarios, horarioSeleccionado]);
+  }, [acude?.horarios]);
 
   const revisarInscripcion = useCallback(async () => {
     if (!acude?.id || !user?.uid) {
@@ -143,6 +159,28 @@ export default function DetalleScreen({ route, navigation }) {
       return;
     }
 
+    // Validar cupos del horario específico seleccionado
+    const cuposHorarioSeleccionado =
+      horarioSeleccionado && typeof horarioSeleccionado.cuposDisponibles === 'number'
+        ? horarioSeleccionado.cuposDisponibles
+        : cuposDisponibles;
+
+    if (cuposHorarioSeleccionado <= 0) {
+      Alert.alert(
+        'Cupos Agotados en este Horario',
+        `Los cupos oficiales en la app para el horario de los ${
+          horarioSeleccionado?.dia || 'seleccionado'
+        } (${horarioSeleccionado?.horaInicio || ''} - ${
+          horarioSeleccionado?.horaFin || ''
+        }) están agotados.\n\nPuedes seleccionar otra franja con cupo disponible o consultar con el docente en Bloque 10 para sobrecupo presencial en la primera sesión.`,
+        [
+          { text: 'Elegir otro horario', style: 'cancel' },
+          { text: 'Ver Cronograma y Sobrecupo', onPress: handleIrAHorarios },
+        ]
+      );
+      return;
+    }
+
     const franjaTexto = horarioSeleccionado
       ? `${horarioSeleccionado.dia} (${horarioSeleccionado.horaInicio} - ${horarioSeleccionado.horaFin})`
       : 'Horario según programación institucional';
@@ -174,10 +212,30 @@ export default function DetalleScreen({ route, navigation }) {
               });
 
               setEstaInscrito(true);
-              setAcude((prev) => ({
-                ...prev,
-                cuposDisponibles: Math.max(0, prev.cuposDisponibles - 1),
-              }));
+              setAcude((prev) => {
+                if (!prev) return prev;
+                const nuevosHorarios = (prev.horarios || []).map((h) => {
+                  const esElMismo =
+                    (horarioSeleccionado?.id && h.id === horarioSeleccionado.id) ||
+                    (h.dia === horarioSeleccionado?.dia &&
+                      h.horaInicio === horarioSeleccionado?.horaInicio);
+                  if (esElMismo) {
+                    const actuales = typeof h.cuposDisponibles === 'number' ? h.cuposDisponibles : 1;
+                    return { ...h, cuposDisponibles: Math.max(0, actuales - 1) };
+                  }
+                  return h;
+                });
+                const sumaCupos = nuevosHorarios.reduce(
+                  (acc, h) =>
+                    acc + (typeof h.cuposDisponibles === 'number' ? h.cuposDisponibles : 0),
+                  0
+                );
+                return {
+                  ...prev,
+                  horarios: nuevosHorarios,
+                  cuposDisponibles: sumaCupos,
+                };
+              });
 
               Alert.alert(
                 '¡Inscripción Exitosa!',
@@ -285,6 +343,11 @@ export default function DetalleScreen({ route, navigation }) {
                 <Text style={styles.valorFicha}>
                   {cuposDisponibles} disponibles de {cupoTotal} plazas totales
                 </Text>
+                {horarios.length > 1 && (
+                  <Text style={styles.subtextoAforoFicha}>
+                    Distribuidos en {horarios.length} horarios con cupos independientes
+                  </Text>
+                )}
               </View>
             </View>
           </View>
@@ -304,23 +367,40 @@ export default function DetalleScreen({ route, navigation }) {
                 {horarios.map((h, idx) => {
                   const estaSeleccionado =
                     horarioSeleccionado &&
-                    horarioSeleccionado.dia === h.dia &&
-                    horarioSeleccionado.horaInicio === h.horaInicio;
+                    ((horarioSeleccionado.id && h.id && horarioSeleccionado.id === h.id) ||
+                      (horarioSeleccionado.dia === h.dia &&
+                        horarioSeleccionado.horaInicio === h.horaInicio));
+                  const cuposH = typeof h.cuposDisponibles === 'number' ? h.cuposDisponibles : 1;
+                  const estaAgotado = typeof h.cuposDisponibles === 'number' && cuposH <= 0;
+
                   return (
                     <TouchableOpacity
-                      key={`${h.dia}-${h.horaInicio}-${idx}`}
+                      key={h.id || `${h.dia}-${h.horaInicio}-${idx}`}
                       style={[
                         styles.tarjetaSlotDetalle,
                         estaSeleccionado && styles.tarjetaSlotDetalleActiva,
+                        estaAgotado && !estaSeleccionado && styles.tarjetaSlotDetalleAgotada,
                       ]}
                       onPress={() => setHorarioSeleccionado(h)}
                       activeOpacity={0.8}
                     >
                       <View style={styles.filaSlotCabecera}>
                         <Ionicons
-                          name={estaSeleccionado ? 'checkmark-circle' : 'ellipse-outline'}
+                          name={
+                            estaSeleccionado
+                              ? 'checkmark-circle'
+                              : estaAgotado
+                              ? 'alert-circle-outline'
+                              : 'ellipse-outline'
+                          }
                           size={18}
-                          color={estaSeleccionado ? COLORES.verdePino : COLORES.grisNeutro}
+                          color={
+                            estaSeleccionado
+                              ? COLORES.verdePino
+                              : estaAgotado
+                              ? '#B45309'
+                              : COLORES.grisNeutro
+                          }
                           style={{ marginRight: 8 }}
                         />
                         <Text
@@ -339,6 +419,27 @@ export default function DetalleScreen({ route, navigation }) {
                         >
                           {h.horaInicio} - {h.horaFin}
                         </Text>
+
+                        {/* Badge individual de cupos de este horario */}
+                        <View
+                          style={[
+                            styles.badgeCuposPill,
+                            estaAgotado && styles.badgeCuposPillAgotado,
+                            estaSeleccionado && !estaAgotado && styles.badgeCuposPillActivo,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.textoBadgeCuposPill,
+                              estaAgotado && styles.textoBadgeCuposPillAgotado,
+                              estaSeleccionado && !estaAgotado && styles.textoBadgeCuposPillActivo,
+                            ]}
+                          >
+                            {estaAgotado
+                              ? 'Agotado'
+                              : `${cuposH} ${cuposH === 1 ? 'cupo libre' : 'cupos libres'}`}
+                          </Text>
+                        </View>
                       </View>
                       {h.lugar ? (
                         <Text
@@ -426,26 +527,44 @@ export default function DetalleScreen({ route, navigation }) {
               </TouchableOpacity>
             </View>
           ) : hayCupos ? (
-            <TouchableOpacity
-              style={[
-                styles.botonInscribirme,
-                inscribiendo && styles.botonDeshabilitado,
-              ]}
-              onPress={handleInscribirse}
-              disabled={inscribiendo}
-              activeOpacity={0.85}
-            >
-              {inscribiendo ? (
-                <ActivityIndicator color="#FFFFFF" size="small" />
-              ) : (
-                <View style={styles.filaBotonTexto}>
-                  <Ionicons name="create-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
-                  <Text style={styles.textoBotonInscribirme}>
-                    Inscribirme en esta Cátedra
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
+            (() => {
+              const cuposH =
+                horarioSeleccionado && typeof horarioSeleccionado.cuposDisponibles === 'number'
+                  ? horarioSeleccionado.cuposDisponibles
+                  : cuposDisponibles;
+              const estaHorarioAgotado = cuposH <= 0;
+
+              return (
+                <TouchableOpacity
+                  style={[
+                    styles.botonInscribirme,
+                    estaHorarioAgotado && styles.botonHorarioAgotado,
+                    inscribiendo && styles.botonDeshabilitado,
+                  ]}
+                  onPress={handleInscribirse}
+                  disabled={inscribiendo}
+                  activeOpacity={0.85}
+                >
+                  {inscribiendo ? (
+                    <ActivityIndicator color="#FFFFFF" size="small" />
+                  ) : (
+                    <View style={styles.filaBotonTexto}>
+                      <Ionicons
+                        name={estaHorarioAgotado ? 'alert-circle-outline' : 'create-outline'}
+                        size={18}
+                        color="#FFFFFF"
+                        style={{ marginRight: 8 }}
+                      />
+                      <Text style={styles.textoBotonInscribirme}>
+                        {estaHorarioAgotado
+                          ? 'Horario Agotado (Ver opciones)'
+                          : 'Inscribirme en esta Cátedra'}
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })()
           ) : (
             <TouchableOpacity
               style={styles.botonSobrecupo}
@@ -781,5 +900,48 @@ const styles = StyleSheet.create({
   textoBotonRegresar: {
     color: '#FFFFFF',
     fontWeight: '600',
+  },
+  subtextoAforoFicha: {
+    fontSize: 11,
+    color: COLORES.verdePino,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  tarjetaSlotDetalleAgotada: {
+    backgroundColor: '#FAF5EF',
+    borderColor: '#E2D9CF',
+    opacity: 0.85,
+  },
+  badgeCuposPill: {
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginLeft: 'auto',
+    borderWidth: 1,
+    borderColor: '#C8E6C9',
+  },
+  badgeCuposPillAgotado: {
+    backgroundColor: '#FEF3C7',
+    borderColor: '#FDE68A',
+  },
+  badgeCuposPillActivo: {
+    backgroundColor: '#FFFFFF',
+    borderColor: COLORES.verdePino,
+  },
+  textoBadgeCuposPill: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORES.verdePino,
+  },
+  textoBadgeCuposPillAgotado: {
+    color: '#92400E',
+  },
+  textoBadgeCuposPillActivo: {
+    color: COLORES.verdePino,
+  },
+  botonHorarioAgotado: {
+    backgroundColor: '#D97706',
+    shadowColor: '#D97706',
   },
 });

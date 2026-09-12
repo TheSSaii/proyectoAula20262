@@ -15,6 +15,47 @@ import { db } from './firebaseConfig';
  */
 export const ACUDES_TDEA = [
   {
+    id: 'acude-danza-contemporanea',
+    nombre: 'Danza Contemporánea y Expresión Corporal',
+    categoria: 'Cultural',
+    disciplina: 'Danza',
+    docente: 'Prof. Mateo Saldarriaga',
+    ubicacion: 'Campus Robledo - Bloque 10 (Salón de Danza y Movimiento)',
+    cupoTotal: 2,
+    cuposDisponibles: 2,
+    estado: 'disponible',
+    descripcion:
+      'Laboratorio de movimiento consciente, técnicas de danza contemporánea, improvisación y exploración coreográfica para el desarrollo del equilibrio, la flexibilidad y la presencia escénica.',
+    requisitos:
+      'Carné institucional TdeA, ropa elástica/cómoda (licra o sudadera) y medias de danza o pies descalzos.',
+    asistenciaMinima:
+      '80% de asistencia obligatoria durante el semestre. Estudiantes con inasistencias consecutivas pierden el cupo para sobrecupo.',
+    notaPresencial:
+      'Cada horario tiene cupo independiente. Si una franja horaria está agotada en la app, puedes consultar el otro horario o presentarte con el docente en Bloque 10 para sobrecupo presencial.',
+    horarios: [
+      {
+        id: 'danza-contemporanea-martes',
+        dia: 'Martes',
+        horaInicio: '16:00',
+        horaFin: '18:00',
+        lugar: 'Bloque 10 - Salón de Danza y Movimiento',
+        cupoTotal: 1,
+        cuposDisponibles: 1,
+      },
+      {
+        id: 'danza-contemporanea-jueves',
+        dia: 'Jueves',
+        horaInicio: '16:00',
+        horaFin: '18:00',
+        lugar: 'Bloque 10 - Salón de Danza y Movimiento',
+        cupoTotal: 1,
+        cuposDisponibles: 1,
+      },
+    ],
+    imagenUrl:
+      'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=800&auto=format&fit=crop&q=60',
+  },
+  {
     id: 'acude-futsal',
     nombre: 'Fútbol Sala Formativo y Representativo',
     categoria: 'Deportiva',
@@ -34,16 +75,22 @@ export const ACUDES_TDEA = [
       'Si los cupos virtuales están agotados, preséntate directamente en el Coliseo (Bloque 10) al inicio de la primera sesión con el docente para solicitar autorización de sobrecupo.',
     horarios: [
       {
+        id: 'futsal-martes',
         dia: 'Martes',
         horaInicio: '14:00',
         horaFin: '16:00',
         lugar: 'Bloque 10 - Coliseo Institucional',
+        cupoTotal: 13,
+        cuposDisponibles: 4,
       },
       {
+        id: 'futsal-jueves',
         dia: 'Jueves',
         horaInicio: '14:00',
         horaFin: '16:00',
         lugar: 'Bloque 10 - Coliseo Institucional',
+        cupoTotal: 12,
+        cuposDisponibles: 4,
       },
     ],
     imagenUrl:
@@ -69,16 +116,22 @@ export const ACUDES_TDEA = [
       'Puedes acercarte directamente al Salón de Expresión Cultural en el Bloque 10 en la sesión inaugural para solicitar sobrecupo con la profesora en caso de cancelaciones de otros alumnos.',
     horarios: [
       {
+        id: 'danza-folclorica-lunes',
         dia: 'Lunes',
         horaInicio: '16:00',
         horaFin: '18:00',
         lugar: 'Bloque 10 - Salón de Expresión Cultural',
+        cupoTotal: 10,
+        cuposDisponibles: 2,
       },
       {
+        id: 'danza-folclorica-miercoles',
         dia: 'Miércoles',
         horaInicio: '16:00',
         horaFin: '18:00',
         lugar: 'Bloque 10 - Salón de Expresión Cultural',
+        cupoTotal: 10,
+        cuposDisponibles: 3,
       },
     ],
     imagenUrl:
@@ -104,16 +157,22 @@ export const ACUDES_TDEA = [
       'Preséntate en el gimnasio (Piso 2 del Bloque 10) en la franja elegida; el docente a cargo evalúa disponibilidad de cupo presencial en la primera semana.',
     horarios: [
       {
+        id: 'acondicionamiento-lunes',
         dia: 'Lunes',
         horaInicio: '08:00',
         horaFin: '10:00',
         lugar: 'Bloque 10 - Gimnasio Bienestar, Piso 2',
+        cupoTotal: 15,
+        cuposDisponibles: 6,
       },
       {
+        id: 'acondicionamiento-miercoles',
         dia: 'Miércoles',
         horaInicio: '08:00',
         horaFin: '10:00',
         lugar: 'Bloque 10 - Gimnasio Bienestar, Piso 2',
+        cupoTotal: 15,
+        cuposDisponibles: 6,
       },
     ],
     imagenUrl:
@@ -139,16 +198,22 @@ export const ACUDES_TDEA = [
       'En caso de cupos agotados en Campus TdeA o en la app, acude a la placa exterior o al coliseo del Bloque 10 a las 14:00 para solicitar sobrecupo con el profesor.',
     horarios: [
       {
+        id: 'voleibol-miercoles',
         dia: 'Miércoles',
         horaInicio: '14:00',
         horaFin: '16:00',
         lugar: 'Bloque 10 - Coliseo / Placa Externa',
+        cupoTotal: 11,
+        cuposDisponibles: 2,
       },
       {
+        id: 'voleibol-viernes',
         dia: 'Viernes',
         horaInicio: '14:00',
         horaFin: '16:00',
         lugar: 'Bloque 10 - Coliseo / Placa Externa',
+        cupoTotal: 11,
+        cuposDisponibles: 2,
       },
     ],
     imagenUrl:
@@ -174,16 +239,22 @@ export const ACUDES_TDEA = [
       'Puedes acercarte directamente a las mesas de juego en el Nivel 1 del Bloque 10 a dialogar con el profesor en la primera clase para solicitar sobrecupo.',
     horarios: [
       {
+        id: 'tenis-mesa-martes',
         dia: 'Martes',
         horaInicio: '10:00',
         horaFin: '12:00',
         lugar: 'Bloque 10 - Nivel 1 Coliseo',
+        cupoTotal: 8,
+        cuposDisponibles: 1,
       },
       {
+        id: 'tenis-mesa-jueves',
         dia: 'Jueves',
         horaInicio: '10:00',
         horaFin: '12:00',
         lugar: 'Bloque 10 - Nivel 1 Coliseo',
+        cupoTotal: 8,
+        cuposDisponibles: 2,
       },
     ],
     imagenUrl:
@@ -209,10 +280,13 @@ export const ACUDES_TDEA = [
       '⚠️ CUPOS VIRTUALES AGOTADOS: Asiste presencialmente al Auditorio Gilberto Echeverri Mejía (Bloque 10) el viernes a las 14:00. La docente autoriza sobrecupo en sitio a los primeros asistentes que cubran plazas de deserción.',
     horarios: [
       {
+        id: 'teatro-viernes',
         dia: 'Viernes',
         horaInicio: '14:00',
         horaFin: '18:00',
         lugar: 'Bloque 10 - Auditorio Gilberto Echeverri Mejía',
+        cupoTotal: 18,
+        cuposDisponibles: 0,
       },
     ],
     imagenUrl:

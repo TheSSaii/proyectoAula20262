@@ -79,6 +79,10 @@ export default function SlotPicker({
               sesion.horaFin || '00:00'
             }`;
 
+            const tieneCuposDefinidos = typeof sesion.cuposDisponibles === 'number';
+            const cuposDisponibles = tieneCuposDefinidos ? sesion.cuposDisponibles : 1;
+            const estaAgotada = tieneCuposDefinidos && cuposDisponibles <= 0;
+
             const esSeleccionada =
               sesionSeleccionada &&
               (sesionSeleccionada.id === sesion.id ||
@@ -93,9 +97,10 @@ export default function SlotPicker({
                 style={[
                   styles.tarjetaSesion,
                   esSeleccionada && styles.tarjetaSesionSeleccionada,
+                  estaAgotada && !esSeleccionada && styles.tarjetaSesionAgotada,
                 ]}
               >
-                {/* Columna Izquierda: Día y Hora */}
+                {/* Columna Izquierda: Día, Hora y Cupos individuales */}
                 <View style={styles.columnaTiempo}>
                   <View
                     style={[
@@ -113,6 +118,41 @@ export default function SlotPicker({
                     </Text>
                   </View>
                   <Text style={styles.textoHora}>{rangoHora}</Text>
+
+                  {/* Badge de Cupo de esta sesión */}
+                  <View
+                    style={[
+                      styles.badgeCuposSesion,
+                      estaAgotada && styles.badgeCuposAgotados,
+                      esSeleccionada && !estaAgotada && styles.badgeCuposSeleccionado,
+                    ]}
+                  >
+                    <Ionicons
+                      name={estaAgotada ? 'alert-circle-outline' : 'people-outline'}
+                      size={11}
+                      color={
+                        estaAgotada
+                          ? '#B45309'
+                          : esSeleccionada
+                          ? COLORES.verdePino
+                          : COLORES.verdePino
+                      }
+                      style={{ marginRight: 3 }}
+                    />
+                    <Text
+                      style={[
+                        styles.textoBadgeCupos,
+                        estaAgotada && styles.textoBadgeCuposAgotados,
+                        esSeleccionada && !estaAgotada && styles.textoBadgeCuposSeleccionado,
+                      ]}
+                    >
+                      {estaAgotada
+                        ? '0 cupos'
+                        : `${cuposDisponibles} ${
+                            cuposDisponibles === 1 ? 'cupo libre' : 'cupos libres'
+                          }`}
+                    </Text>
+                  </View>
                 </View>
 
                 {/* Divisor vertical */}
@@ -142,29 +182,51 @@ export default function SlotPicker({
                   )}
 
                   {/* Estado / Botón de Selección interactivo */}
-                  <View
-                    style={[
-                      styles.pildoraSeleccion,
-                      esSeleccionada && styles.pildoraSeleccionActiva,
-                    ]}
-                  >
-                    <Ionicons
-                      name={esSeleccionada ? 'checkmark-circle' : 'radio-button-off'}
-                      size={14}
-                      color={esSeleccionada ? COLORES.verdePino : COLORES.grisNeutro}
-                      style={{ marginRight: 5 }}
-                    />
-                    <Text
+                  {estaAgotada ? (
+                    <View
                       style={[
-                        styles.textoPildoraSeleccion,
-                        esSeleccionada && styles.textoPildoraSeleccionActiva,
+                        styles.pildoraSeleccion,
+                        styles.pildoraAgotada,
+                        esSeleccionada && styles.pildoraAgotadaSeleccionada,
                       ]}
                     >
-                      {esSeleccionada
-                        ? 'Horario seleccionado'
-                        : 'Toca para elegir esta franja'}
-                    </Text>
-                  </View>
+                      <Ionicons
+                        name="alert-circle"
+                        size={14}
+                        color="#B45309"
+                        style={{ marginRight: 5 }}
+                      />
+                      <Text style={[styles.textoPildoraSeleccion, { color: '#B45309', fontWeight: '700' }]}>
+                        {esSeleccionada
+                          ? 'Agotado (Sobrecupo en Bloque 10)'
+                          : 'Agotado en app · Ver sobrecupo'}
+                      </Text>
+                    </View>
+                  ) : (
+                    <View
+                      style={[
+                        styles.pildoraSeleccion,
+                        esSeleccionada && styles.pildoraSeleccionActiva,
+                      ]}
+                    >
+                      <Ionicons
+                        name={esSeleccionada ? 'checkmark-circle' : 'radio-button-off'}
+                        size={14}
+                        color={esSeleccionada ? COLORES.verdePino : COLORES.grisNeutro}
+                        style={{ marginRight: 5 }}
+                      />
+                      <Text
+                        style={[
+                          styles.textoPildoraSeleccion,
+                          esSeleccionada && styles.textoPildoraSeleccionActiva,
+                        ]}
+                      >
+                        {esSeleccionada
+                          ? 'Horario seleccionado'
+                          : 'Toca para elegir esta franja'}
+                      </Text>
+                    </View>
+                  )}
                 </View>
               </TouchableOpacity>
             );
@@ -344,6 +406,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderColor: COLORES.verdePino,
   },
+  pildoraAgotada: {
+    backgroundColor: '#FEF3C7',
+    borderColor: '#FDE68A',
+  },
+  pildoraAgotadaSeleccionada: {
+    borderColor: '#D97706',
+    borderWidth: 1.5,
+  },
   textoPildoraSeleccion: {
     fontSize: 11,
     fontWeight: '600',
@@ -352,5 +422,40 @@ const styles = StyleSheet.create({
   textoPildoraSeleccionActiva: {
     color: COLORES.verdePino,
     fontWeight: '700',
+  },
+  tarjetaSesionAgotada: {
+    opacity: 0.85,
+    backgroundColor: '#FAF5EF',
+    borderColor: '#E2D9CF',
+  },
+  badgeCuposSesion: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginTop: 6,
+    borderWidth: 1,
+    borderColor: '#C8E6C9',
+  },
+  badgeCuposAgotados: {
+    backgroundColor: '#FEF3C7',
+    borderColor: '#FDE68A',
+  },
+  badgeCuposSeleccionado: {
+    backgroundColor: '#FFFFFF',
+    borderColor: COLORES.verdePino,
+  },
+  textoBadgeCupos: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORES.verdePino,
+  },
+  textoBadgeCuposAgotados: {
+    color: '#92400E',
+  },
+  textoBadgeCuposSeleccionado: {
+    color: COLORES.verdePino,
   },
 });

@@ -70,7 +70,17 @@ export default function HorariosScreen({ route, navigation }) {
       const data = await getHorariosAcude(acude.id);
       setHorariosData(data);
       if (Array.isArray(data.sesiones) && data.sesiones.length > 0) {
-        setSesionSeleccionada((prev) => prev || data.sesiones[0]);
+        setSesionSeleccionada((prev) => {
+          if (prev) {
+            const matching = data.sesiones.find(
+              (s) =>
+                (prev.id && s.id === prev.id) ||
+                (s.dia === prev.dia && s.horaInicio === prev.horaInicio)
+            );
+            if (matching) return matching;
+          }
+          return data.sesiones.find((s) => s.hayCupo) || data.sesiones[0];
+        });
       }
     } catch (err) {
       console.error('Error al cargar cronograma semanal:', err);
@@ -109,7 +119,7 @@ export default function HorariosScreen({ route, navigation }) {
 
   const sesiones = horariosData?.sesiones || acude.horarios || [];
   const diasActivos = horariosData?.diasSemanales || sesiones.map((s) => s.dia);
-  const cuposDisponibles = acude.cuposDisponibles ?? 0;
+  const cuposDisponibles = horariosData?.cuposDisponibles ?? acude.cuposDisponibles ?? 0;
   const hayCupos = cuposDisponibles > 0;
 
   // Al seleccionar un día en DateSelector, ajustar la sesión elegida si es relevante
@@ -122,7 +132,8 @@ export default function HorariosScreen({ route, navigation }) {
         (s) => s.dia?.toLowerCase().trim() === dia.toLowerCase().trim()
       );
       if (sesionesDelDia.length > 0) {
-        setSesionSeleccionada(sesionesDelDia[0]);
+        const conCupo = sesionesDelDia.find((s) => s.hayCupo);
+        setSesionSeleccionada(conCupo || sesionesDelDia[0]);
       }
     }
   };
@@ -139,6 +150,20 @@ export default function HorariosScreen({ route, navigation }) {
 
     if (!sesionSeleccionada) {
       Alert.alert('Selecciona un Horario', 'Toca una de las franjas horarias disponibles para elegir tu horario.');
+      return;
+    }
+
+    const cuposSesion =
+      typeof sesionSeleccionada.cuposDisponibles === 'number'
+        ? sesionSeleccionada.cuposDisponibles
+        : cuposDisponibles;
+
+    if (cuposSesion <= 0) {
+      Alert.alert(
+        'Cupos Agotados en esta Franja',
+        `Los cupos en la app para el horario de los ${sesionSeleccionada.dia} (${sesionSeleccionada.horaInicio} - ${sesionSeleccionada.horaFin}) están agotados.\n\nPor favor selecciona otro horario disponible o consulta con el docente para sobrecupo presencial en la primera sesión en Bloque 10.`,
+        [{ text: 'Entendido', style: 'default' }]
+      );
       return;
     }
 
@@ -164,6 +189,7 @@ export default function HorariosScreen({ route, navigation }) {
               });
 
               setEstaInscrito(true);
+              await cargarHorarios();
 
               Alert.alert(
                 '¡Matrícula Exitosa!',
@@ -257,40 +283,83 @@ export default function HorariosScreen({ route, navigation }) {
             </TouchableOpacity>
           </View>
         ) : hayCupos ? (
-          <View style={styles.cajaAccionMatricula}>
-            <View style={styles.filaResumenSeleccion}>
-              <Ionicons name="time" size={18} color={COLORES.verdePino} style={{ marginRight: 8 }} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.labelFranjaElegida}>Franja seleccionada para tu matrícula:</Text>
-                <Text style={styles.valorFranjaElegida}>
-                  {sesionSeleccionada
-                    ? `${sesionSeleccionada.dia} · ${sesionSeleccionada.horaInicio} a ${sesionSeleccionada.horaFin}`
-                    : 'Toca una de las franjas arriba'}
-                </Text>
-              </View>
-            </View>
+          (() => {
+            const cuposSesion =
+              sesionSeleccionada && typeof sesionSeleccionada.cuposDisponibles === 'number'
+                ? sesionSeleccionada.cuposDisponibles
+                : cuposDisponibles;
+            const estaSesionAgotada = cuposSesion <= 0;
 
-            <TouchableOpacity
-              style={[
-                styles.botonConfirmarMatricula,
-                (!sesionSeleccionada || inscribiendo) && styles.botonDeshabilitado,
-              ]}
-              onPress={handleInscribirEnHorario}
-              disabled={!sesionSeleccionada || inscribiendo}
-              activeOpacity={0.85}
-            >
-              {inscribiendo ? (
-                <ActivityIndicator color="#FFFFFF" size="small" />
-              ) : (
-                <View style={styles.filaBotonTexto}>
-                  <Ionicons name="checkmark-done-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
-                  <Text style={styles.textoBotonConfirmarMatricula}>
-                    Matricularme en esta Franja
-                  </Text>
+            return (
+              <View style={styles.cajaAccionMatricula}>
+                <View style={styles.filaResumenSeleccion}>
+                  <Ionicons name="time" size={18} color={COLORES.verdePino} style={{ marginRight: 8 }} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.labelFranjaElegida}>Franja seleccionada para tu matrícula:</Text>
+                    <Text style={styles.valorFranjaElegida}>
+                      {sesionSeleccionada
+                        ? `${sesionSeleccionada.dia} · ${sesionSeleccionada.horaInicio} a ${sesionSeleccionada.horaFin}`
+                        : 'Toca una de las franjas arriba'}
+                    </Text>
+                    {sesionSeleccionada && typeof sesionSeleccionada.cuposDisponibles === 'number' && (
+                      <Text
+                        style={{
+                          fontSize: 11,
+                          fontWeight: '700',
+                          color:
+                            sesionSeleccionada.cuposDisponibles > 0
+                              ? COLORES.verdePino
+                              : '#B45309',
+                          marginTop: 3,
+                        }}
+                      >
+                        {sesionSeleccionada.cuposDisponibles > 0
+                          ? `Disponibilidad: ${sesionSeleccionada.cuposDisponibles} ${
+                              sesionSeleccionada.cuposDisponibles === 1
+                                ? 'cupo libre'
+                                : 'cupos libres'
+                            }`
+                          : '⚠️ Cupos oficiales agotados en esta franja (Consulta sobrecupo presencial)'}
+                      </Text>
+                    )}
+                  </View>
                 </View>
-              )}
-            </TouchableOpacity>
-          </View>
+
+                <TouchableOpacity
+                  style={[
+                    styles.botonConfirmarMatricula,
+                    (!sesionSeleccionada || inscribiendo || estaSesionAgotada) &&
+                      styles.botonDeshabilitado,
+                  ]}
+                  onPress={handleInscribirEnHorario}
+                  disabled={!sesionSeleccionada || inscribiendo || estaSesionAgotada}
+                  activeOpacity={0.85}
+                >
+                  {inscribiendo ? (
+                    <ActivityIndicator color="#FFFFFF" size="small" />
+                  ) : (
+                    <View style={styles.filaBotonTexto}>
+                      <Ionicons
+                        name={
+                          estaSesionAgotada
+                            ? 'alert-circle-outline'
+                            : 'checkmark-done-outline'
+                        }
+                        size={18}
+                        color="#FFFFFF"
+                        style={{ marginRight: 8 }}
+                      />
+                      <Text style={styles.textoBotonConfirmarMatricula}>
+                        {estaSesionAgotada
+                          ? 'Franja Horaria Agotada'
+                          : 'Matricularme en esta Franja'}
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </View>
+            );
+          })()
         ) : null}
 
         {/* Banner de Sobrecupo Presencial Directo con el Docente */}

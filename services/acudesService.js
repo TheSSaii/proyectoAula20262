@@ -26,16 +26,65 @@ const COLECCION_ACUDES = 'acudes';
  */
 function normalizarDocumentoAcude(docSnapshot) {
   const data = docSnapshot.data() || {};
+  const idDoc = docSnapshot.id;
+  const rawHorarios = Array.isArray(data.horarios) ? data.horarios : [];
+
+  // Normalizar cada horario individual asegurando aforo por franja
+  const horarios = rawHorarios.map((h, idx) => {
+    const idHorario = h.id || `${idDoc}-horario-${idx + 1}`;
+    const cupoTotalHorario =
+      typeof h.cupoTotal === 'number'
+        ? h.cupoTotal
+        : rawHorarios.length > 0 && typeof data.cupoTotal === 'number'
+        ? Math.floor(data.cupoTotal / rawHorarios.length)
+        : 10;
+
+    const cuposDisponiblesHorario =
+      typeof h.cuposDisponibles === 'number'
+        ? h.cuposDisponibles
+        : rawHorarios.length > 0 && typeof data.cuposDisponibles === 'number'
+        ? Math.floor(data.cuposDisponibles / rawHorarios.length)
+        : cupoTotalHorario;
+
+    return {
+      id: idHorario,
+      dia: h.dia || 'Por definir',
+      horaInicio: h.horaInicio || '00:00',
+      horaFin: h.horaFin || '00:00',
+      lugar: h.lugar || data.ubicacion || 'Campus Robledo - Bloque 10',
+      docente: h.docente || data.docente || 'Docente asignado',
+      cupoTotal: cupoTotalHorario,
+      cuposDisponibles: Math.max(0, cuposDisponiblesHorario),
+    };
+  });
+
+  // Si hay horarios configurados, la suma de cupos individuales determina el aforo total
+  const sumaCuposDisponibles =
+    horarios.length > 0
+      ? horarios.reduce((acc, h) => acc + (h.cuposDisponibles || 0), 0)
+      : typeof data.cuposDisponibles === 'number'
+      ? data.cuposDisponibles
+      : 0;
+
+  const sumaCupoTotal =
+    horarios.length > 0
+      ? horarios.reduce((acc, h) => acc + (h.cupoTotal || 0), 0)
+      : typeof data.cupoTotal === 'number'
+      ? data.cupoTotal
+      : 25;
+
+  const estado = sumaCuposDisponibles > 0 ? 'disponible' : 'agotado';
+
   return {
-    id: docSnapshot.id,
+    id: idDoc,
     nombre: data.nombre || 'Cátedra sin nombre',
     categoria: data.categoria || 'Deportiva', // 'Deportiva' | 'Cultural'
     disciplina: data.disciplina || 'General',
     ubicacion: data.ubicacion || 'Campus Robledo - Bloque 10',
     docente: data.docente || 'Docente de Bienestar',
-    cupoTotal: typeof data.cupoTotal === 'number' ? data.cupoTotal : 25,
-    cuposDisponibles: typeof data.cuposDisponibles === 'number' ? data.cuposDisponibles : 0,
-    estado: data.estado || (data.cuposDisponibles > 0 ? 'disponible' : 'agotado'),
+    cupoTotal: sumaCupoTotal,
+    cuposDisponibles: sumaCuposDisponibles,
+    estado: data.estado || estado,
     descripcion: data.descripcion || '',
     requisitos: data.requisitos || 'Carné institucional TdeA y vestimenta adecuada.',
     asistenciaMinima:
@@ -44,7 +93,7 @@ function normalizarDocumentoAcude(docSnapshot) {
     notaPresencial:
       data.notaPresencial ||
       'Si no alcanzaste cupo virtual en la app o en Campus TdeA, preséntate directamente en el lugar de la clase en la primera sesión con el docente a cargo para solicitar sobrecupo si hay plazas liberadas.',
-    horarios: Array.isArray(data.horarios) ? data.horarios : [],
+    horarios,
     imagenUrl: data.imagenUrl || null,
     actualizadoEn: data.actualizadoEn ? data.actualizadoEn.toDate() : null,
   };

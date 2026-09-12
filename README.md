@@ -261,17 +261,18 @@ A continuación se documentan los errores reportados durante las pruebas de usua
     *   **Descripción:** En la vista principal del cronograma (`HorariosScreen.js`), el componente visual de sesión no permitía ejecutar la matrícula directamente.
     *   **Solución Aplicada:** En `components/SlotPicker.js` y `screens/HorariosScreen.js`, se transformó cada franja horaria en un elemento interactivo que selecciona la sesión (`sesionSeleccionada`) y activa un contenedor de matrícula contextual con el botón "Matricularme en esta Franja" (con confirmación del 80% de asistencia mínima y verificación de aforo/estado previo).
 
-### ❓ 5. Dudas de Arquitectura por Aclarar
-<<<<<<< HEAD
-*   **Botón "Sincronizar Catálogo ACUDE (Bloque 10)":**
-    *   **Descripción:** El comportamiento de este botón en el perfil del usuario no es claro. 
-    *   **Acción Requerida:** Documentar qué hace exactamente este proceso por debajo (¿Actualiza la base de datos local? ¿Hace un fetch a Firestore?) para entender cómo se evidencia esta acción a nivel de base de datos.
+*   **Gestión y Visualización de Cupos Independientes por Horario (ej. Danza Contemporánea):** `[RESUELTO]`
+    *   **Descripción:** Las cátedras ACUDE tienen cupos independientes en cada uno de sus horarios, pero la aplicación solo mostraba el cupo total acumulado, omitiendo la disponibilidad específica de cada sesión. Por ejemplo, en una cátedra con 2 cupos totales (1 en cada franja), si una franja se agotaba, el usuario no podía ver cuál estaba llena ni el sistema bloqueaba la inscripción en esa franja específica.
+    *   **Solución Aplicada:**
+        - En `services/acudesService.js`, se estandarizó la normalización de cada horario con `cupoTotal` y `cuposDisponibles` propios, garantizando que el aforo global sea la suma precisa de los cupos de sus franjas.
+        - En `services/inscripcionesService.js`, `inscribirEstudiante` valida y descuenta atómicamente el cupo en el horario seleccionado dentro de una transacción `runTransaction`. Al cancelar con `cancelarInscripcion`, el cupo se reintegra atómicamente a la franja horaria correspondiente del estudiante.
+        - En `components/SlotPicker.js` y `screens/DetalleScreen.js`, cada franja horaria ahora cuenta con su propio badge visual de aforo individual (`X cupos libres` o `0 cupos / Agotado`).
+        - En `screens/HorariosScreen.js` y `screens/DetalleScreen.js`, se implementó validación visual y bloqueo informativo cuando una franja está agotada, orientando al estudiante hacia otra franja o hacia el sobrecupo presencial con el docente en el Bloque 10.
+        - En `services/seedAcudes.js`, se incorporó la cátedra "Danza Contemporánea y Expresión Corporal" configurada con 2 cupos totales (1 en Martes y 1 en Jueves) y se estructuraron aforos granulares en todo el catálogo.
 
-### LOS ERRORES SON IGUALES EN IOS Y EN ANDROID
-=======
+### ❓ 5. Dudas de Arquitectura por Aclarar
 *   **Botón "Sincronizar Catálogo ACUDE en Firestore":** `[ACLARADO Y DOCUMENTADO]`
     *   **Descripción y Funcionamiento Técnico:**
         - **¿Qué hace por debajo?**: Ejecuta la función `ejecutarSeedAcudes()` (`services/seedAcudes.js`), la cual se conecta directamente con **Google Cloud Firestore**.
-        - **Proceso de base de datos**: Realiza un lote de escrituras utilizando `setDoc(doc(db, 'acudes', acude.id), datos, { merge: true })`. Al utilizar identificadores deterministas fijos (`acude-futsal`, `acude-danza-folclorica`, `acude-voleibol`, `acude-teatro-expresion`, etc.) y la opción `{ merge: true }`, la operación es **completamente idempotente**: no duplica documentos en caso de múltiples pulsaciones, crea las cátedras si la colección no existe y actualiza campos institucionales (aforos, requisitos, docentes, horarios y marcas de tiempo `serverTimestamp()`) preservando el estado de la base de datos.
+        - **Proceso de base de datos**: Realiza un lote de escrituras utilizando `setDoc(doc(db, 'acudes', acude.id), datos, { merge: true })`. Al utilizar identificadores deterministas fijos (`acude-danza-contemporanea`, `acude-futsal`, `acude-danza-folclorica`, `acude-voleibol`, `acude-teatro-expresion`, etc.) y la opción `{ merge: true }`, la operación es **completamente idempotente**: no duplica documentos en caso de múltiples pulsaciones, crea las cátedras si la colección no existe y actualiza campos institucionales (aforos por horario, requisitos, docentes, horarios y marcas de tiempo `serverTimestamp()`) preservando el estado de la base de datos.
         - **Mejora en UI:** En `screens/PerfilScreen.js`, se agregó un subtítulo explícito debajo del botón indicando al usuario y a los evaluadores que se trata de un proceso de inicialización e hidratación remota en Cloud Firestore para el Bloque 10.
->>>>>>> entrega1
