@@ -92,14 +92,18 @@ export async function inscribirEstudiante(acudeId, userId, datosEstudiante = {})
   const nuevaInscripcionRef = doc(collection(db, COLECCION_INSCRIPCIONES));
 
   try {
+    // runTransaction garantiza que si 2 estudiantes se inscriben al MISMO milisegundo,
+    // Firestore los pone en fila y procesa uno por uno. No habrá sobrecupos.
     const resultado = await runTransaction(db, async (transaction) => {
+      // 1. LEER: Obtener los datos frescos de la cátedra desde la base de datos
       const acudeDoc = await transaction.get(acudeRef);
       if (!acudeDoc.exists()) {
         throw new Error('La cátedra ACUDE no existe en la base de datos.');
       }
 
       const dataAcude = acudeDoc.data();
-      // Normalizar todos los horarios garantizando que cada franja tenga aforo definido y coherente
+      // Normalizar todos los horarios garantizando que cada franja tenga aforo definido y coherente.
+      // (Por ejemplo: Si hay 30 cupos en total y 3 horarios, asigna 10 cupos a cada horario)
       const horarios = normalizarHorariosConAforo(
         dataAcude.horarios,
         dataAcude.cupoTotal,
@@ -107,12 +111,16 @@ export async function inscribirEstudiante(acudeId, userId, datosEstudiante = {})
         acudeId
       );
 
-      // Determinar horario seleccionado específico
+      // 2. BUSCAR: Identificar qué horario específico eligió el estudiante
       let indiceHorario = -1;
       const horarioObj = datosEstudiante.horarioSeleccionado;
+      
+      // Intentar buscar por ID del horario
       if (horarioObj?.id) {
         indiceHorario = horarios.findIndex((h) => h.id === horarioObj.id);
       }
+      
+      // Si no tiene ID, buscar por coincidencia de día y hora (ej: "Lunes", "14:00")
       if (indiceHorario === -1) {
         const diaTarget = normalizarTexto(horarioObj?.dia || datosEstudiante.diaSeleccionado || '');
         const horaTarget = (horarioObj?.horaInicio || '').trim();
@@ -127,7 +135,9 @@ export async function inscribirEstudiante(acudeId, userId, datosEstudiante = {})
           });
         }
       }
-      // Fallback si no se seleccionó o no se encontró: primer horario con cupos libres
+      
+      // Plan B (Fallback): Si no eligió un horario específico o hubo un error, 
+      // lo asignamos al primer horario que todavía tenga cupos libres.
       if (indiceHorario === -1 && horarios.length > 0) {
         const conCupoIdx = horarios.findIndex((h) => h.cuposDisponibles > 0);
         indiceHorario = conCupoIdx !== -1 ? conCupoIdx : 0;
@@ -135,9 +145,10 @@ export async function inscribirEstudiante(acudeId, userId, datosEstudiante = {})
 
       const horarioElegido = indiceHorario !== -1 ? horarios[indiceHorario] : null;
 
-      // Validación de cupos del horario específico
+      // 3. VALIDAR: Revisar si efectivamente quedan cupos en el horario que encontramos
       if (horarioElegido) {
         if (horarioElegido.cuposDisponibles <= 0) {
+          // Si es 0 o menor, bloqueamos la inscripción y cancelamos la transacción
           throw new Error(
             `Los cupos oficiales en la app para el horario de los ${horarioElegido.dia} (${horarioElegido.horaInicio} - ${horarioElegido.horaFin}) están agotados. Puedes elegir otro horario disponible o consultar con el docente para sobrecupo presencial en Bloque 10.`
           );
@@ -151,26 +162,28 @@ export async function inscribirEstudiante(acudeId, userId, datosEstudiante = {})
         }
       }
 
-      // Decrementar ÚNICAMENTE el cupo del horario específico seleccionado
+      // 4. PREPARAR: Decrementar (restar 1) ÚNICAMENTE el cupo del horario específico seleccionado
       const nuevosHorarios = horarios.map((h, idx) => {
         if (idx === indiceHorario) {
           return {
             ...h,
+            // Math.max evita que el número baje de 0 (no queremos números negativos)
             cuposDisponibles: Math.max(0, h.cuposDisponibles - 1),
           };
         }
         return h;
       });
 
-      // Recalcular cupos totales y estado a partir de los horarios normalizados
+      // Recalcular cupos totales sumando los cupos que le quedan a cada horario
       const nuevosCupos =
         nuevosHorarios.length > 0
           ? nuevosHorarios.reduce((acc, h) => acc + h.cuposDisponibles, 0)
           : Math.max(0, (typeof dataAcude.cuposDisponibles === 'number' ? dataAcude.cuposDisponibles : 1) - 1);
 
+      // Si la suma de cupos es 0, la cátedra se marca como 'agotada'
       const nuevoEstado = nuevosCupos === 0 ? 'agotado' : 'disponible';
 
-      // 2. Decrementar cupo en la cátedra
+      // 5. ESCRIBIR (1/2): Actualizar la cátedra en la base de datos restando el cupo
       transaction.update(acudeRef, {
         horarios: nuevosHorarios,
         cuposDisponibles: nuevosCupos,
@@ -197,7 +210,7 @@ export async function inscribirEstudiante(acudeId, userId, datosEstudiante = {})
       const idHorarioElegido =
         horarioElegido?.id || `${acudeId}-horario-${indiceHorario + 1}`;
 
-      // 3. Crear el documento de inscripción vinculado al estudiante
+      // 6. ESCRIBIR (2/2): Crear el documento de inscripción (comprobante) vinculado al estudiante
       transaction.set(nuevaInscripcionRef, {
         idUsuario: userId,
         emailUsuario: datosEstudiante.email || '',

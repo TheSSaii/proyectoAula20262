@@ -12,6 +12,104 @@ import { View, Text, StyleSheet } from 'react-native';
 import { COLORES } from '../constants/theme';
 
 /**
+ * Componente Badge reutilizable.
+ *
+ * @param {Object} props
+ * @param {string} [props.texto] - Texto a mostrar. Si no se provee, usa el label por defecto del estado.
+ * @param {('disponible'|'agotado'|'inscrito'|'cultural'|'deportiva'|'mantenimiento'|'cancelado'|'info'|'default')} [props.estado='default']
+ * @param {('pequeno'|'mediano')} [props.tamano='mediano']
+ * @param {object} [props.style]
+ * @param {object} [props.textStyle]
+ * @returns {React.JSX.Element}
+ */
+export default function Badge({
+  texto,
+  estado = 'default',
+  tamano = 'mediano',
+  style,
+  textStyle,
+}) {
+  const estadoNormalizado = (estado || 'default').toLowerCase().trim();
+  const configuracion = PALETA_ESTADOS[estadoNormalizado] || PALETA_ESTADOS.default;
+  const textoAMostrar = texto || configuracion.labelPorDefecto;
+
+  return (
+    <View
+      style={[
+        styles.badge,
+        tamano === 'pequeno' ? styles.badgePequeno : styles.badgeMediano,
+        {
+          backgroundColor: configuracion.fondo,
+          borderColor: configuracion.borde,
+        },
+        style,
+      ]}
+    >
+      <View
+        style={[
+          styles.puntoIndicador,
+          { backgroundColor: configuracion.texto },
+          tamano === 'pequeno' && styles.puntoPequeno,
+        ]}
+      />
+      <Text
+        style={[
+          styles.texto,
+          tamano === 'pequeno' ? styles.textoPequeno : styles.textoMediano,
+          { color: configuracion.texto },
+          textStyle,
+        ]}
+        numberOfLines={1}
+      >
+        {textoAMostrar}
+      </Text>
+    </View>
+  );
+}
+
+//Estilos globales de la tarjeta 
+
+const styles = StyleSheet.create({
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  badgeMediano: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  badgePequeno: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  puntoIndicador: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 6,
+  },
+  puntoPequeno: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    marginRight: 4,
+  },
+  texto: {
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  textoMediano: {
+    fontSize: 12,
+  },
+  textoPequeno: {
+    fontSize: 11,
+  },
+});
+
+/**
  * Paleta semántica para estados y etiquetas de Cátedras ACUDE.
  * Alineada a la identidad oficial TdeA (Verde Pino, Verde Lima, Gris Neutro y Negro Institucional).
  */
@@ -71,99 +169,3 @@ const PALETA_ESTADOS = {
     labelPorDefecto: 'General',
   },
 };
-
-/**
- * Componente Badge reutilizable.
- *
- * @param {Object} props
- * @param {string} [props.texto] - Texto a mostrar. Si no se provee, usa el label por defecto del estado.
- * @param {('disponible'|'agotado'|'inscrito'|'cultural'|'deportiva'|'mantenimiento'|'cancelado'|'info'|'default')} [props.estado='default']
- * @param {('pequeno'|'mediano')} [props.tamano='mediano']
- * @param {object} [props.style]
- * @param {object} [props.textStyle]
- * @returns {React.JSX.Element}
- */
-export default function Badge({
-  texto,
-  estado = 'default',
-  tamano = 'mediano',
-  style,
-  textStyle,
-}) {
-  const estadoNormalizado = (estado || 'default').toLowerCase().trim();
-  const configuracion = PALETA_ESTADOS[estadoNormalizado] || PALETA_ESTADOS.default;
-  const textoAMostrar = texto || configuracion.labelPorDefecto;
-
-  return (
-    <View
-      style={[
-        styles.badge,
-        tamano === 'pequeno' ? styles.badgePequeno : styles.badgeMediano,
-        {
-          backgroundColor: configuracion.fondo,
-          borderColor: configuracion.borde,
-        },
-        style,
-      ]}
-    >
-      <View
-        style={[
-          styles.puntoIndicador,
-          { backgroundColor: configuracion.texto },
-          tamano === 'pequeno' && styles.puntoPequeno,
-        ]}
-      />
-      <Text
-        style={[
-          styles.texto,
-          tamano === 'pequeno' ? styles.textoPequeno : styles.textoMediano,
-          { color: configuracion.texto },
-          textStyle,
-        ]}
-        numberOfLines={1}
-      >
-        {textoAMostrar}
-      </Text>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  badgeMediano: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  badgePequeno: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  puntoIndicador: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: 6,
-  },
-  puntoPequeno: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    marginRight: 4,
-  },
-  texto: {
-    fontWeight: '700',
-    letterSpacing: 0.2,
-  },
-  textoMediano: {
-    fontSize: 12,
-  },
-  textoPequeno: {
-    fontSize: 11,
-  },
-});

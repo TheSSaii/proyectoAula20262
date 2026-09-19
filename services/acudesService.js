@@ -42,6 +42,9 @@ export function normalizarHorariosConAforo(
   }
 
   const n = rawHorarios.length;
+  
+  // Revisamos si TODOS los horarios ya tienen la información de cupos guardada.
+  // Si falta en al menos uno, tendremos que recalcularlos todos para que sea equitativo.
   const todosTienenCupos = rawHorarios.every(
     (h) => typeof h?.cuposDisponibles === 'number' && typeof h?.cupoTotal === 'number'
   );
@@ -67,29 +70,32 @@ export function normalizarHorariosConAforo(
   const baseTotal = Math.floor(total / n);
   const remTotal = total % n;
 
-  const baseDisp = Math.floor(disponibles / n);
-  const remDisp = disponibles % n;
+  // ALGORITMO DE DISTRIBUCIÓN EQUITATIVA:
+  // Si los horarios no tenían cupos individuales en la base de datos (datos antiguos o semilla básica),
+  // tomamos el cupo total (ej: 25) y lo dividimos entre el número de horarios (ej: 3).
+  // 25 / 3 = 8 (base) y nos sobra 1 (residuo).
+  
+  const cupoBase = Math.floor((cupoTotalDoc || 20) / n);
+  const residuoCupoBase = (cupoTotalDoc || 20) % n;
+
+  const disponiblesBase = Math.floor((cuposDisponiblesDoc || 0) / n);
+  let residuoDisponibles = (cuposDisponiblesDoc || 0) % n;
 
   return rawHorarios.map((h, idx) => {
-    const idHorario = h.id || `${acudeId}-horario-${idx + 1}`;
-    const cupoTotalCalculado =
-      typeof h.cupoTotal === 'number' ? h.cupoTotal : baseTotal + (idx < remTotal ? 1 : 0);
-
-    const cuposDisponiblesCalculados =
-      typeof h.cuposDisponibles === 'number'
-        ? h.cuposDisponibles
-        : baseDisp + (idx < remDisp ? 1 : 0);
+    // Al primer horario (idx === 0) le sumamos el residuo para no perder cupos.
+    const extraCupo = idx === 0 ? residuoCupoBase : 0;
+    const extraDisp = idx < residuoDisponibles ? 1 : 0;
 
     return {
       ...h,
-      id: idHorario,
+      id: h.id || `${acudeId}-horario-${idx + 1}`,
       dia: h.dia || 'Por definir',
       horaInicio: h.horaInicio || '00:00',
       horaFin: h.horaFin || '00:00',
       lugar: h.lugar || 'Campus Robledo - Bloque 10',
       docente: h.docente || 'Docente asignado',
-      cupoTotal: cupoTotalCalculado,
-      cuposDisponibles: Math.max(0, Math.min(cupoTotalCalculado, cuposDisponiblesCalculados)),
+      cupoTotal: cupoBase + extraCupo,
+      cuposDisponibles: Math.max(0, disponiblesBase + extraDisp),
     };
   });
 }

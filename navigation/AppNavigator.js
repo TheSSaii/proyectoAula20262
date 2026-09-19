@@ -33,7 +33,10 @@ export default function AppNavigator() {
     );
   }
 
-  // Enrutamiento condicional
+  // Enrutamiento condicional: El corazón de la seguridad de la interfaz.
+  // Si 'user' existe (el usuario inició sesión), le mostramos las 'Tabs' (la app real).
+  // Si 'user' es null (no hay sesión), le mostramos 'AuthStack' (pantallas de Login/Registro).
+  // Esto evita que usuarios no logueados vean información protegida.
   return user ? <Tabs /> : <AuthStack />;
 }
 

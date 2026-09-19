@@ -72,13 +72,26 @@ export function AuthProvider({ children }) {
 
   // Escuchar cambios de estado en Firebase Auth (Login, Logout, Persistencia en AsyncStorage)
   useEffect(() => {
+    // onAuthStateChanged es un "vigilante" (listener) que Firebase nos da.
+    // Se ejecuta automáticamente en 2 momentos:
+    // 1. Cuando la app abre y encuentra un token de sesión guardado (AsyncStorage).
+    // 2. Cada vez que alguien hace login o logout con éxito.
     const desuscribir = onAuthStateChanged(auth, async (usuarioActual) => {
+      // 'usuarioActual' contiene los datos básicos de Firebase Auth si hay sesión (email, uid).
+      // Si no hay sesión (o hizo logout), 'usuarioActual' será null.
       setUser(usuarioActual);
+      
       if (usuarioActual) {
+        // Si el usuario existe, buscamos su perfil detallado en Firestore (nombre, sede, etc.)
+        // Si es su primera vez, 'obtenerOCrearUsuario' se encargará de crearle su documento.
         await sincronizarPerfil(usuarioActual);
       } else {
+        // Si cerró sesión, limpiamos el perfil de la memoria.
         setPerfil(null);
       }
+      
+      // Finalmente, decimos "ya terminé de cargar".
+      // Esto hace que AppNavigator deje de mostrar el spinner y muestre las pantallas.
       setLoading(false);
     });
 

@@ -13,9 +13,14 @@ import AppNavigator from './navigation/AppNavigator';
 
 export default function App() {
   return (
+    // AuthProvider provee el estado global de autenticación (usuario actual, si está cargando, etc.) a toda la app
     <AuthProvider>
+      {/* NavigationContainer es el contenedor principal de React Navigation que maneja el árbol de navegación */}
       <NavigationContainer>
+        {/* StatusBar controla el estilo de la barra de estado del celular (hora, batería, etc.) */}
         <StatusBar style="dark" />
+        
+        {/* AppNavigator decide qué pantallas mostrar (Login si no hay sesión, o el contenido principal si lo hay) */}
         <AppNavigator />
       </NavigationContainer>
     </AuthProvider>
