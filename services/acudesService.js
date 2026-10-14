@@ -175,11 +175,10 @@ export async function getAcudes(filtroCategoria = 'Todos') {
     if (filtroCategoria && filtroCategoria !== 'Todos') {
       consulta = query(
         coleccionRef,
-        where('categoria', '==', filtroCategoria),
-        orderBy('nombre', 'asc')
+        where('categoria', '==', filtroCategoria)
       );
     } else {
-      consulta = query(coleccionRef, orderBy('nombre', 'asc'));
+      consulta = query(coleccionRef);
     }
 
     const querySnapshot = await getDocs(consulta);
@@ -187,6 +186,10 @@ export async function getAcudes(filtroCategoria = 'Todos') {
     querySnapshot.forEach((docSnap) => {
       acudes.push(normalizarDocumentoAcude(docSnap));
     });
+
+    // Ordenar en el cliente para garantizar orden consistente
+    // sin depender de índices de Firestore
+    acudes.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
 
     return acudes;
   } catch (error) {

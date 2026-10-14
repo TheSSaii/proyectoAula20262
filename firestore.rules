@@ -6,7 +6,7 @@ service cloud.firestore {
     // Lectura pública para cualquier estudiante autenticado
     match /acudes/{acudeId} {
       allow read: if request.auth != null;
-      allow write: if false; // Solo administradores o scripts autorizados
+      allow write: if request.auth != null;
     }
 
     // Colección de Inscripciones
