@@ -207,3 +207,91 @@ Si ejecutas la app por primera vez con una base de datos vacía, en la pantalla 
 Al pulsarlo, se insertarán automáticamente las 6 cátedras reales del campus Robledo con sus horarios, docentes y espacios del Bloque 10 de forma 100% idempotente (`setDoc` con `{ merge: true }`).
 
 ---
+
+## 8. Criterios de Aceptación y Estado de la Rúbrica
+
+### A. Funcionalidad Base
+- [x] **Aislamiento de usuario:** El usuario visualiza únicamente sus propias reservas (`idUsuario == request.auth.uid`).
+- [ ] **Reprogramación atómica:** La reprogramación actualiza correctamente fecha y hora en Firestore, y libera la franja anterior.
+- [ ] **Validación de disponibilidad:** El sistema impide reprogramar hacia una franja no disponible o ya ocupada.
+- [x] **Cancelación y liberación:** La cancelación cambia el estado de la reserva a `cancelada` y libera el cupo en la franja (`+1`).
+- [ ] **Visualización de estados:** Los estados de la reserva (`activa`, `cancelada`, `reprogramada`, `pendiente_sincronizacion`) se visualizan de forma clara y consistente en todas las pantallas.
+- [x] **Navegación estable:** Flujo consistente entre reservar, mis reservas y detalle de la cátedra sin fugas de memoria.
+
+### B. Modo Offline
+- [ ] **Visibilidad sin conexión:** El listado de cátedras, la disponibilidad descargada y el módulo "Mis reservas" siguen visibles offline vía caché local.
+- [ ] **Indicador de conectividad:** La app muestra un indicador visual y permanente del estado de la conexión en cabecera.
+- [ ] **Cola de acciones pendientes:** Las acciones ejecutadas sin red se guardan localmente y se marcan como `"pendiente por sincronizar"`.
+- [ ] **Advertencia preventiva:** La app advierte al usuario que una reserva creada sin conexión queda sujeta a confirmación al sincronizar.
+- [ ] **Sincronización automática:** Al recuperar la conexión, las acciones pendientes se envían a Firestore y el indicador desaparece.
+- [ ] **Estabilidad sin red:** La app no se bloquea, no muestra pantallas en blanco ni entra en bucles de carga infinita sin internet.
+- [ ] **Aislamiento por usuario:** Los datos locales están asociados al usuario autenticado y se limpian al cerrar sesión.
+
+### C. Funcionalidad Emergente (FE-01)
+> *[Espacio reservado para documentar el hallazgo propio seleccionado por el equipo]*
+> 
+> * **Problema que resuelve:** [A definir por el equipo]
+> * **Quién lo reportó (Trazabilidad con entregable 1):** [A definir según docs/investigación/]
+> * **Cómo se implementó:** [Componente / Pantalla / Servicio]
+> * **Regla Offline:** [Comportamiento o degradación controlada sin red]
+
+---
+
+## 9. Asignación de Tareas del Equipo (Roadmap 4 Desarrolladores)
+
+### Santiago — Persistencia Local & Caché Offline (Data Layer)
+* **Responsabilidad:** Garantizar que la app nunca se quede en blanco sin internet y los datos persistan localmente.
+* **Criterios de Aceptación Asignados:**
+  - [ ] Listado de cátedras, horarios y "Mis reservas" visibles sin conexión vía caché local.
+  - [ ] La app no se bloquea ni muestra pantalla de error al abrir sin red (estrategia Cache-First).
+  - [ ] Los datos en caché están asociados al `uid` del usuario y se borran de `AsyncStorage` al hacer `logout`.
+* **Archivos a modificar/crear:**
+  - `services/storageService.js` *(Nuevo: operaciones `guardarEnCache`, `obtenerDeCache`, `limpiarCacheUsuario`)*
+  - `services/acudesService.js` *(Fallback local en `getAcudes()` si Firestore no responde)*
+  - `services/inscripcionesService.js` *(Fallback local en `getMisInscripciones()`)*
+  - `contexts/AuthContexto.js` *(Invocar limpieza de caché al cerrar sesión)*
+
+---
+
+### Simon — Conectividad, Sincronización & Cola Offline (Sync Layer)
+* **Responsabilidad:** Monitorear el estado de red, mostrar avisos visuales y procesar acciones pendientes diferidas.
+* **Criterios de Aceptación Asignados:**
+  - [ ] Indicador permanente y visible del estado de conexión (Banner/Badge superior).
+  - [ ] Registro local de reservas/cancelaciones sin red con marca "pendiente por sincronizar".
+  - [ ] Alerta de confirmación advirtiendo que la reserva offline queda sujeta a sincronización.
+  - [ ] Disparo automático de la cola hacia Firestore al detectar reconexión a internet.
+* **Archivos a modificar/crear:**
+  - `contexts/NetworkContext.js` *(Nuevo: listener de `@react-native-community/netinfo`)*
+  - `components/NetworkBanner.js` *(Nuevo: banner visual de estado de conexión)*
+  - `services/syncQueueService.js` *(Nuevo: lógica de encolado, persistencia y despacho de acciones)*
+  - `App.js` *(Integración del `NetworkProvider` y del `NetworkBanner`)*
+
+---
+
+### Kenner — Lógica Transaccional de Reprogramación (Backend / Firestore)
+* **Responsabilidad:** Asegurar la integridad matemática y concurrente al cambiar de horario en la base de datos.
+* **💡 Nota de avance:** La validación de disponibilidad y el decremento (`-1`) ya están construidos en `inscribirEstudiante()`, y la liberación (`+1`) ya existe en `cancelarInscripcion()`. El trabajo consiste en combinarlas en una sola transacción atómica (`runTransaction`).
+* **Criterios de Aceptación Asignados:**
+  - [ ] Crear la función `reprogramarInscripcion()` en `services/inscripcionesService.js` con `runTransaction`.
+  - [ ] Reutilizar e integrar en una sola transacción la liberación (+1) de la franja anterior y el decremento (-1) de la nueva franja.
+  - [ ] Reutilizar el bloqueo estricto ya existente que impide reprogramar hacia horarios sin cupos o agotados.
+  - [ ] Soporte de estados de reserva persistidos: `activa`, `cancelada`, `reprogramada`, `pendiente_sincronizacion`.
+* **Archivos a modificar/crear:**
+  - `services/inscripcionesService.js` *(Implementar función `reprogramarInscripcion()` combinando la lógica de las líneas 149-175 y 341-352)*
+  - `services/disponibilidadService.js` *(Validación de aforo por franja específica)*
+  - `firestore.rules` *(Garantizar reglas de update para la reprogramación del usuario)*
+
+---
+
+### El goat — UI de Reprogramación, Estados & Control FE-01 (UI/UX)
+* **Responsabilidad:** Diseñar la interacción del usuario para cambiar de horario y asegurar consistencia visual de estados.
+* **Criterios de Aceptación Asignados:**
+  - [ ] Botón "Cambiar Franja" en cada reserva de `MisInscripcionesScreen.js`.
+  - [ ] Modal interactivo que lista las franjas alternativas del taller, mostrando cuáles tienen cupo y cuáles están bloqueadas.
+  - [ ] Visualización clara de los badges de estado (`Matriculado`, `Reprogramado`, `Pendiente de sincronizar`, `Cancelado`).
+  - [ ] Integración y verificación de la FE-01 definida por el equipo en modo offline y navegación estable sin crashes.
+* **Archivos a modificar/crear:**
+  - `screens/MisInscripcionesScreen.js` *(Integración de botón y estado de reprogramación)*
+  - `components/ModalReprogramar.js` *(Nuevo: selector modal de nueva franja con validación visual)*
+  - `components/Badge.js` *(Nuevas variantes para `reprogramada` y `offline`)*
+  - `README.md` *(Documentación final de la FE-01 y trazabilidad)*
